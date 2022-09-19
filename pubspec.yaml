@@ -29,9 +29,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^1.0.0
   bitsdojo_window: ^0.1.5
-  google_fonts: ^3.0.1
   flutter_bloc: ^8.1.1
   font_awesome_flutter: ^10.2.1
-
+  flutter_slidable: ^2.0.0
+  shared_preferences: ^2.0.15
+  date_format: ^2.0.6
 flutter:
   uses-material-design: true

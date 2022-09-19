@@ -1,66 +1,56 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:todo_client/state/mainStore.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:todo_client/components/main_core.dart';
 
 void main() {
   runApp(const MyApp());
   doWhenWindowReady(() {
     final win = appWindow;
-    const initialSize = Size(1050, 700);
+    const initialSize = Size(800, 700);
     win.minSize = initialSize;
     win.size = initialSize;
     win.alignment = Alignment.center;
-    win.title = "Custom window with Flutter";
+    win.title = "todo list";
     win.show();
   });
 }
 
 const borderColor = Color(0xFF805306);
+// 通过navigatorKey的方式 保存全局的context
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => MainStore(),
-      child: BlocBuilder<MainStore, MainState>(builder: (context, state) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: state.currentTheme,
-          home: Scaffold(
-            body: WindowBorder(
-              color: borderColor,
-              width: 1,
-              child: Column(
-                children: [
-                  const TopBar(),
-                  Text(state.theme.toString()),
-                  ElevatedButton(
-                      onPressed: () {
-                        context
-                            .read<MainStore>()
-                            .changeTheme(BaseThemeMode.blue);
-                      },
-                      child: const Text('change theme')),
-                  IconButton(
-                    padding: const EdgeInsets.all(0),
-                    hoverColor: Colors.transparent,
-                    splashColor: Colors.transparent,
-                    icon: const Icon(
-                      Icons.arrow_back_ios,
-                      size: 15,
-                    ),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-            ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.blue),
+      navigatorKey: navigatorKey, // set property
+      home: Scaffold(
+        body: WindowBorder(
+          color: borderColor,
+          width: 1,
+          child: Column(
+            children: [
+              const TopBar(),
+              Expanded(
+                child: LayoutBuilder(builder:
+                    (BuildContext context, BoxConstraints boxConstraints) {
+                  return SizedBox(
+                    width: boxConstraints.maxWidth,
+                    height: boxConstraints.maxHeight,
+                    child: const MainCore(),
+                  );
+                }),
+              )
+            ],
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 }
@@ -75,35 +65,24 @@ class TopBar extends StatelessWidget {
         width: boxConstraints.maxWidth,
         height: 60,
         color: Theme.of(context).primaryColor,
+        padding: const EdgeInsets.all(20),
         child: MoveWindow(
             child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             DefaultTextStyle(
                 style: const TextStyle(color: Colors.white),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'todoList',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      const SizedBox(
-                        width: 100,
-                      ),
-                      CupertinoButton(
-                          child: const Icon(Icons.arrow_back_ios,
-                              size: 15, color: Colors.white),
-                          onPressed: () {}),
-                      CupertinoButton(
-                          padding: const EdgeInsets.all(0),
-                          child: const Icon(Icons.arrow_forward_ios,
-                              size: 15, color: Colors.white),
-                          onPressed: () {})
-                    ],
-                  ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: const [
+                    Text(
+                      'Todo list',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                    SizedBox(
+                      width: 50,
+                    ),
+                  ],
                 )),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -118,6 +97,9 @@ class TopBar extends StatelessWidget {
                         size: 14,
                       ),
                       onPressed: () {}),
+                ),
+                const SizedBox(
+                  width: 20,
                 ),
                 const WindowButtons(),
               ],
@@ -151,20 +133,37 @@ class _WindowButtonsState extends State<WindowButtons> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      spacing: 20,
       children: [
-        MinimizeWindowButton(colors: buttonColors),
-        appWindow.isMaximized
-            ? RestoreWindowButton(
-                colors: buttonColors,
-                onPressed: maximizeOrRestore,
-              )
-            : MaximizeWindowButton(
-                colors: buttonColors,
-                onPressed: maximizeOrRestore,
-              ),
-        CloseWindowButton(colors: buttonColors),
+        GestureDetector(
+          onTap: () => appWindow.minimize(),
+          child: Transform.translate(
+            offset: const Offset(0, -7),
+            child: const FaIcon(
+              FontAwesomeIcons.windowMinimize,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+        ),
+        GestureDetector(
+          child: Icon(
+            appWindow.isMaximized ? Icons.close_fullscreen : Icons.fullscreen,
+            color: Colors.white,
+            size: 16,
+          ),
+          onTap: () => maximizeOrRestore(),
+        ),
+        GestureDetector(
+          child: const Icon(
+            Icons.close,
+            color: Colors.white,
+            size: 16,
+          ),
+          onTap: () => appWindow.close(),
+        ),
       ],
     );
   }

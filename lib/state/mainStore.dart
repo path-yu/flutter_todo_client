@@ -15,8 +15,6 @@ class MainStore extends Cubit<MainState> {
 
 class MainState {
   BaseThemeMode theme = BaseThemeMode.red;
-  bool isLogin = false;
-  List playList = [];
 
   ThemeData get currentTheme => baseThemeData[theme.toString()] as ThemeData;
 }
