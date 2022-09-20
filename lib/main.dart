@@ -228,6 +228,7 @@ class _PickerThemeDialogState extends State<PickerThemeDialog> {
         itemSize - checkBoxSize + checkBoxSize * 0.8 / 2);
     var pickerIndex = context.watch<MainStore>().pickPrimaryColorIndex;
     return AlertDialog(
+      actionsAlignment: MainAxisAlignment.center,
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
         child: Column(
@@ -294,6 +295,11 @@ class _PickerThemeDialogState extends State<PickerThemeDialog> {
           ],
         ),
       ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('confirm'))
+      ],
     );
   }
 }
