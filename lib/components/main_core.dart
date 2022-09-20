@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:date_format/date_format.dart';
-import 'package:todo_client/components/cursor_pointer.dart';
 import 'package:todo_client/main.dart';
+import 'package:todo_client/state/mainStore.dart';
 
 class MainCore extends StatefulWidget {
   const MainCore({Key? key}) : super(key: key);
@@ -46,6 +46,12 @@ class TodoItem {
 
 enum TodoItemFilterType { all, active, compete }
 
+Map<int, TodoItemFilterType> todoItemFilterTypeIndexMap = {
+  0: TodoItemFilterType.all,
+  1: TodoItemFilterType.active,
+  2: TodoItemFilterType.compete,
+};
+
 class _MainCoreState extends State<MainCore> {
   String title = '';
   String description = '';
@@ -84,6 +90,10 @@ class _MainCoreState extends State<MainCore> {
   void initState() {
     super.initState();
     init();
+    final window = WidgetsBinding.instance.window;
+    window.onPlatformBrightnessChanged = () {
+      context.read<MainStore>().changeTheme(window.platformBrightness);
+    };
   }
 
   void init() async {
@@ -122,7 +132,7 @@ class _MainCoreState extends State<MainCore> {
             spacing: 10,
             children: [
               TextFormField(
-                // initialValue: editTitle,
+                initialValue: editTitle,
                 onChanged: (value) => editTitle = value,
                 decoration: titleDecoration,
                 // decoration: titleDecoration,
@@ -167,11 +177,9 @@ class _MainCoreState extends State<MainCore> {
       border: OutlineInputBorder());
 
   var baseDeleteConfirmDialog = createDeleteConfirmDialog();
-
+  final List<bool> _selectedListType = <bool>[true, false, false];
   @override
   Widget build(BuildContext context) {
-    Color primaryColor = Theme.of(context).primaryColor;
-
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final Color draggableItemColor = colorScheme.secondary;
 
@@ -194,7 +202,9 @@ class _MainCoreState extends State<MainCore> {
         : filterType == TodoItemFilterType.active
             ? activeTodoList
             : completeTodoList;
-
+    Color actionBackgroundColor = context.watch<MainStore>().openNightMode
+        ? Theme.of(context).cardColor
+        : Colors.white;
     return Container(
       child: Column(children: [
         const Text(
@@ -207,6 +217,11 @@ class _MainCoreState extends State<MainCore> {
           controller: _tittleController,
           decoration: _titleInputDecoration,
           onChanged: (value) => setState(() => title = value),
+          onSubmitted: (value) {
+            if (value.isNotEmpty) {
+              handleAddClick();
+            }
+          },
         ),
         space,
         TextField(
@@ -247,10 +262,10 @@ class _MainCoreState extends State<MainCore> {
                           children: [
                             SlidableAction(
                               icon: Icons.close_outlined,
+                              backgroundColor: actionBackgroundColor,
                               onPressed: (BuildContext context) async {
-                                bool res =
-                                    await baseDeleteConfirmDialog['show']!();
-                                if (res) {
+                                if (await baseDeleteConfirmDialog['show']!() !=
+                                    null) {
                                   setState(() {
                                     todoList.removeAt(index);
                                   });
@@ -262,6 +277,7 @@ class _MainCoreState extends State<MainCore> {
                             ),
                             SlidableAction(
                               icon: Icons.edit,
+                              backgroundColor: actionBackgroundColor,
                               onPressed: (_) =>
                                   handleEditPressed(index, renderTodoList),
                               borderRadius:
@@ -270,39 +286,39 @@ class _MainCoreState extends State<MainCore> {
                           ],
                         ),
                         child: Card(
-                          child: ListTile(
-                            title: Text(title,
-                                style: TextStyle(
+                          child: AnimatedOpacity(
+                            opacity: checked ? 0.6 : 1,
+                            duration: const Duration(milliseconds: 300),
+                            child: ListTile(
+                              title: Text(title,
+                                  style: TextStyle(
                                     decoration: decoration,
-                                    color:
-                                        checked ? Colors.grey : Colors.black)),
-                            subtitle: description.isEmpty
-                                ? null
-                                : Text(description,
-                                    style: TextStyle(
+                                  )),
+                              subtitle: description.isEmpty
+                                  ? null
+                                  : Text(description,
+                                      style: TextStyle(
                                         decoration: decoration,
-                                        color: checked
-                                            ? Colors.grey
-                                            : const Color.fromRGBO(
-                                                115, 115, 115, 1))),
-                            leading: Checkbox(
-                              value: checked,
-                              onChanged: (value) {
-                                setState(() {
-                                  todoList[index].checked = value!;
-                                });
-                                setPrefsTodoList();
-                              },
-                            ),
-                            trailing: Wrap(
-                              spacing: 5,
-                              children: [
-                                Text(renderTodoList[index].updateTime),
-                                ReorderableDragStartListener(
-                                  index: index,
-                                  child: const Icon(Icons.drag_handle_sharp),
-                                )
-                              ],
+                                      )),
+                              leading: Checkbox(
+                                value: checked,
+                                onChanged: (value) {
+                                  setState(() {
+                                    todoList[index].checked = value!;
+                                  });
+                                  setPrefsTodoList();
+                                },
+                              ),
+                              trailing: Wrap(
+                                spacing: 5,
+                                children: [
+                                  Text(renderTodoList[index].updateTime),
+                                  ReorderableDragStartListener(
+                                    index: index,
+                                    child: const Icon(Icons.drag_handle_sharp),
+                                  )
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -336,53 +352,35 @@ class _MainCoreState extends State<MainCore> {
               '${activeTodoList.length} item left',
               style: const TextStyle(fontSize: 16),
             ),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: 10,
-              children: [
-                baseCursorPointer(CupertinoButton(
-                  child: Text(
-                    'All',
-                    style: TextStyle(
-                        color: filterType == TodoItemFilterType.all
-                            ? primaryColor
-                            : Colors.black),
-                  ),
-                  onPressed: () =>
-                      setState(() => filterType = TodoItemFilterType.all),
-                  padding: const EdgeInsets.all(0),
-                )),
-                const SizedBox(
-                  width: 10,
-                ),
-                baseCursorPointer(CupertinoButton(
-                  child: Text(
-                    'Active',
-                    style: TextStyle(
-                        color: filterType == TodoItemFilterType.active
-                            ? primaryColor
-                            : Colors.black),
-                  ),
-                  onPressed: () =>
-                      setState(() => filterType = TodoItemFilterType.active),
-                  padding: const EdgeInsets.all(0),
-                )),
-                const SizedBox(
-                  width: 10,
-                ),
-                baseCursorPointer(CupertinoButton(
-                  child: Text(
-                    'Complete',
-                    style: TextStyle(
-                        color: filterType == TodoItemFilterType.compete
-                            ? primaryColor
-                            : Colors.black),
-                  ),
-                  onPressed: () =>
-                      setState(() => filterType = TodoItemFilterType.compete),
-                  padding: const EdgeInsets.all(0),
-                )),
+            ToggleButtons(
+              constraints: const BoxConstraints(
+                minHeight: 40.0,
+                minWidth: 80.0,
+              ),
+              children: const <Widget>[
+                Text('All'),
+                Text('Active'),
+                Text('Complete')
               ],
+              onPressed: (int index) {
+                setState(() {
+                  for (int buttonIndex = 0;
+                      buttonIndex < _selectedListType.length;
+                      buttonIndex++) {
+                    if (buttonIndex == index) {
+                      _selectedListType[buttonIndex] =
+                          !_selectedListType[buttonIndex];
+                    } else {
+                      _selectedListType[buttonIndex] = false;
+                    }
+                  }
+                  filterType = todoItemFilterTypeIndexMap[index]!;
+                });
+              },
+              isSelected: _selectedListType,
+              renderBorder: false,
+              fillColor: Colors.transparent,
+              hoverColor: Colors.transparent,
             ),
             TextButton(
               child: const Text('Clear complete'),
@@ -410,16 +408,16 @@ Map<String, Function> createDeleteConfirmDialog(
   Widget baseAlertDialog = AlertDialog(
     title: const Text(
       "Tips",
-      textAlign: TextAlign.center,
     ),
-    actionsAlignment: MainAxisAlignment.center,
     content: Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const Text("Confirm delete?"),
+        const Text(
+          "Confirm delete?",
+        ),
         if (showNotTipsCheckBox)
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               const Text("Not tips?"),
               StatefulBuilder(builder: (context, setState) {

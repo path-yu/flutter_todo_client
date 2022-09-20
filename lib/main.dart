@@ -1,23 +1,39 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:todo_client/components/main_core.dart';
+import 'package:todo_client/state/mainStore.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
 void main() {
-  runApp(const MyApp());
-  doWhenWindowReady(() {
-    final win = appWindow;
-    const initialSize = Size(800, 700);
-    win.minSize = initialSize;
-    win.size = initialSize;
-    win.alignment = Alignment.center;
-    win.title = "todo list";
-    win.show();
+  WidgetsFlutterBinding.ensureInitialized();
+  _prefs.then((prefs) {
+    String? pickPrimaryColorIndex = prefs.getString(pickPrimaryColorIndexKey);
+    bool? openNightMode = prefs.getBool(openNightModeKey);
+    runApp(ChangeNotifierProvider(
+      create: (context) => MainStore(
+          pickPrimaryColorIndex: pickPrimaryColorIndex != null
+              ? int.parse(pickPrimaryColorIndex)
+              : 5,
+          openNightMode: openNightMode ?? false),
+      child: const MyApp(),
+    ));
+    doWhenWindowReady(() {
+      final win = appWindow;
+      const initialSize = Size(800, 700);
+      win.minSize = initialSize;
+      win.size = initialSize;
+      win.alignment = Alignment.center;
+      win.title = "todo list";
+      win.show();
+    });
   });
 }
 
 const borderColor = Color(0xFF805306);
+
 // 通过navigatorKey的方式 保存全局的context
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -26,9 +42,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var primaryColor = context.watch<MainStore>().primaryColor;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
+      themeMode: ThemeMode.system,
+      theme: ThemeData(
+          primarySwatch: primaryColor,
+          brightness: context.watch<MainStore>().brightness),
       navigatorKey: navigatorKey, // set property
       home: Scaffold(
         body: WindowBorder(
@@ -57,8 +77,10 @@ class MyApp extends StatelessWidget {
 
 class TopBar extends StatelessWidget {
   const TopBar({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
+    bool openNightMode = context.watch<MainStore>().openNightMode;
     return LayoutBuilder(
         builder: ((BuildContext context, BoxConstraints boxConstraints) {
       return Container(
@@ -66,56 +88,63 @@ class TopBar extends StatelessWidget {
         height: 60,
         color: Theme.of(context).primaryColor,
         padding: const EdgeInsets.all(20),
-        child: MoveWindow(
-            child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            DefaultTextStyle(
-                style: const TextStyle(color: Colors.white),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
-                    Text(
-                      'Todo list',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    SizedBox(
-                      width: 50,
-                    ),
-                  ],
-                )),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: CupertinoButton(
-                      padding: const EdgeInsets.all(0),
+        child: DefaultTextStyle(
+          style: const TextStyle(color: Colors.white),
+          child: MoveWindow(
+              child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Todo list',
+                style: TextStyle(fontSize: 18),
+              ),
+              Row(
+                children: [
+                  TextButton(
                       child: const FaIcon(
                         FontAwesomeIcons.shirt,
                         color: Colors.white,
-                        size: 14,
+                        size: 16,
                       ),
-                      onPressed: () {}),
-                ),
-                const SizedBox(
-                  width: 20,
-                ),
-                const WindowButtons(),
-              ],
-            )
-          ],
-        )),
+                      onPressed: () {
+                        showDialog<void>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return const PickerThemeDialog();
+                          },
+                        );
+                      }),
+                  TextButton(
+                    child: AnimatedSwitcher(
+                      child: Icon(
+                        openNightMode
+                            ? Icons.nightlight_outlined
+                            : Icons.light_mode_outlined,
+                        color: Colors.white,
+                        size: 16,
+                        key: ValueKey<bool>(openNightMode),
+                      ),
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                        //执行缩放动画
+                        return ScaleTransition(child: child, scale: animation);
+                      },
+                    ),
+                    onPressed: () {
+                      context.read<MainStore>().toggleTheme();
+                    },
+                  ),
+                  const WindowButtons(),
+                ],
+              )
+            ],
+          )),
+        ),
       );
     }));
   }
 }
-
-final buttonColors = WindowButtonColors(
-  iconNormal: Colors.white,
-  mouseOver: Colors.transparent,
-  mouseDown: Colors.transparent,
-);
 
 class WindowButtons extends StatefulWidget {
   const WindowButtons({Key? key}) : super(key: key);
@@ -133,38 +162,138 @@ class _WindowButtonsState extends State<WindowButtons> {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      spacing: 20,
+    return Row(
       children: [
-        GestureDetector(
-          onTap: () => appWindow.minimize(),
-          child: Transform.translate(
-            offset: const Offset(0, -7),
-            child: const FaIcon(
-              FontAwesomeIcons.windowMinimize,
-              color: Colors.white,
-              size: 16,
+        Transform.translate(
+          offset: const Offset(0, -5),
+          child: SizedBox(
+            width: 40,
+            child: TextButton(
+              child: const Icon(
+                Icons.minimize,
+                color: Colors.white,
+                size: 16,
+              ),
+              onPressed: () => appWindow.minimize(),
             ),
           ),
         ),
-        GestureDetector(
-          child: Icon(
-            appWindow.isMaximized ? Icons.close_fullscreen : Icons.fullscreen,
-            color: Colors.white,
-            size: 16,
+        SizedBox(
+          width: 40,
+          child: TextButton(
+            child: Icon(
+              appWindow.isMaximized ? Icons.close_fullscreen : Icons.fullscreen,
+              color: Colors.white,
+              size: 16,
+            ),
+            onPressed: () => maximizeOrRestore(),
           ),
-          onTap: () => maximizeOrRestore(),
         ),
-        GestureDetector(
-          child: const Icon(
-            Icons.close,
-            color: Colors.white,
-            size: 16,
+        SizedBox(
+          width: 40,
+          child: TextButton(
+            child: const Icon(
+              Icons.close,
+              color: Colors.white,
+              size: 16,
+            ),
+            onPressed: () => appWindow.close(),
           ),
-          onTap: () => appWindow.close(),
         ),
       ],
+    );
+  }
+}
+
+class PickerThemeDialog extends StatefulWidget {
+  const PickerThemeDialog({Key? key}) : super(key: key);
+
+  @override
+  State<PickerThemeDialog> createState() => _PickerThemeDialogState();
+}
+
+class _PickerThemeDialogState extends State<PickerThemeDialog> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  double checkBoxSize = 24;
+  double itemSize = 50;
+
+  @override
+  Widget build(BuildContext context) {
+    Offset checkBoxOffset = Offset(
+        itemSize - checkBoxSize + checkBoxSize * 0.8 / 2,
+        itemSize - checkBoxSize + checkBoxSize * 0.8 / 2);
+    var pickerIndex = context.watch<MainStore>().pickPrimaryColorIndex;
+    return AlertDialog(
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Picker theme color',
+              style: TextStyle(
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: materialColorList.asMap().keys.toList().map((index) {
+                return Stack(
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        context
+                            .read<MainStore>()
+                            .changePrickerPrimaryColorIndex(index);
+                        _prefs.then((value) {
+                          value.setString(
+                              pickPrimaryColorIndexKey, (index).toString());
+                        });
+                      },
+                      child: Container(
+                        width: itemSize,
+                        height: itemSize,
+                        decoration: BoxDecoration(
+                            color: materialColorList[index],
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(5))),
+                      ),
+                    ),
+                    if (pickerIndex == index)
+                      Transform.translate(
+                          offset: checkBoxOffset,
+                          child: Transform.scale(
+                            scale: 0.8,
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(30))),
+                              child: SizedBox(
+                                width: checkBoxSize,
+                                height: checkBoxSize,
+                                child: Checkbox(
+                                    value: true,
+                                    shape: const CircleBorder(),
+                                    onChanged: (_) {}),
+                              ),
+                            ),
+                          ))
+                  ],
+                );
+              }).toList(),
+            )
+          ],
+        ),
+      ),
     );
   }
 }

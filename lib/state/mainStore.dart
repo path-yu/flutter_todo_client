@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:todo_client/state/theme_data.dart';
 
-enum BaseThemeMode { dark, red, pink, blue, green, orange }
+List<MaterialColor> materialColorList = Colors.primaries;
 
-class MainStore extends Cubit<MainState> {
-  MainStore() : super(MainState());
+class MainStore with ChangeNotifier {
+  int pickPrimaryColorIndex;
+  bool openNightMode;
+  MainStore({required this.pickPrimaryColorIndex, required this.openNightMode});
 
-  void changeTheme(BaseThemeMode theme) {
-    state.theme = theme;
-    emit(state);
+  MaterialColor get primaryColor => materialColorList[pickPrimaryColorIndex];
+  Brightness get brightness =>
+      openNightMode ? Brightness.dark : Brightness.light;
+
+  changePrickerPrimaryColorIndex(int index) {
+    pickPrimaryColorIndex = index;
+    notifyListeners();
+  }
+
+  toggleTheme() {
+    openNightMode = !openNightMode;
+    notifyListeners();
+  }
+
+  changeTheme(Brightness brightness) {
+    openNightMode = brightness == Brightness.dark;
+    notifyListeners();
   }
 }
 
-class MainState {
-  BaseThemeMode theme = BaseThemeMode.red;
-
-  ThemeData get currentTheme => baseThemeData[theme.toString()] as ThemeData;
-}
+const pickPrimaryColorIndexKey = 'pickPrimaryColorIndex';
+const openNightModeKey = 'openNightModeKey';
