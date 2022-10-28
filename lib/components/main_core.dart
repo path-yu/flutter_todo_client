@@ -85,9 +85,9 @@ class _MainCoreState extends State<MainCore>
     Tab(text: 'all'),
   ];
   Map<int, TodoType> tabIndexTypeMap = {
-    0: TodoType.urgent,
+    0: TodoType.normal,
     1: TodoType.important,
-    2: TodoType.normal
+    2: TodoType.urgent,
   };
   void handleAddClick() {
     TodoItem item = TodoItem(
