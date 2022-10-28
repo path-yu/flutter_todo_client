@@ -43,12 +43,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var primaryColor = context.watch<MainStore>().primaryColor;
+    MaterialStateProperty<Color?> fillColor =
+        MaterialStateProperty.all(context.watch<MainStore>().primaryColor);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: ThemeData(
           primarySwatch: primaryColor,
-          brightness: context.watch<MainStore>().brightness),
+          brightness: context.watch<MainStore>().brightness,
+          checkboxTheme: CheckboxThemeData(
+            fillColor: fillColor,
+          ),
+          radioTheme: RadioThemeData(fillColor: fillColor)),
       navigatorKey: navigatorKey, // set property
       home: Scaffold(
         body: WindowBorder(
@@ -70,6 +76,7 @@ class MyApp extends StatelessWidget {
             ],
           ),
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
     );
   }
@@ -298,7 +305,7 @@ class _PickerThemeDialogState extends State<PickerThemeDialog> {
       actions: [
         TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('confirm'))
+            child: const Text('confirm'))
       ],
     );
   }

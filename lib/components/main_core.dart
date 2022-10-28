@@ -14,32 +14,41 @@ class MainCore extends StatefulWidget {
   State<MainCore> createState() => _MainCoreState();
 }
 
+enum TodoType { urgent, important, normal }
+
+String urgentStr = getEnumTwoString(TodoType.urgent);
+String importantStr = getEnumTwoString(TodoType.important);
+String normalStr = getEnumTwoString(TodoType.normal);
+String getEnumTwoString(TodoType type) {
+  return type.toString().split('.')[1];
+}
+
 class TodoItem {
   late String title;
-  late String description;
   late String updateTime;
   late bool checked;
+  late String type;
   TodoItem({
     required this.title,
-    required this.description,
     required this.updateTime,
+    required this.type,
     this.checked = true,
   });
 
   //将json 序列化为model对象
   TodoItem.fromJson(Map<String, dynamic> json) {
     title = json['title'];
-    description = json['description'];
     updateTime = json['updateTime'];
     checked = json['checked'];
+    type = json['type'];
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['title'] = title;
-    data['description'] = description;
     data['updateTime'] = updateTime;
     data['checked'] = checked;
+    data['type'] = type;
     return data;
   }
 }
@@ -52,11 +61,16 @@ Map<int, TodoItemFilterType> todoItemFilterTypeIndexMap = {
   2: TodoItemFilterType.compete,
 };
 
-class _MainCoreState extends State<MainCore> {
+class _MainCoreState extends State<MainCore>
+    with SingleTickerProviderStateMixin {
   String title = '';
-  String description = '';
   List<TodoItem> todoList = [];
+  TodoType? inputTodoType = TodoType.normal;
+  TodoType? tabTodoType = TodoType.normal;
   TodoItemFilterType filterType = TodoItemFilterType.all;
+
+  late TabController _tabController;
+
   List<TodoItem> get completeTodoList =>
       todoList.where((element) => element.checked).toList();
   List<TodoItem> get activeTodoList =>
@@ -64,16 +78,26 @@ class _MainCoreState extends State<MainCore> {
   final TextEditingController _tittleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+  static const List<Tab> typeTabs = <Tab>[
+    Tab(text: 'normal'),
+    Tab(text: 'important'),
+    Tab(text: 'urgent'),
+    Tab(text: 'all'),
+  ];
+  Map<int, TodoType> tabIndexTypeMap = {
+    0: TodoType.urgent,
+    1: TodoType.important,
+    2: TodoType.normal
+  };
   void handleAddClick() {
     TodoItem item = TodoItem(
-      title: title,
-      description: description,
-      updateTime: getCurrentTime(),
-    );
+        title: title,
+        updateTime: getCurrentTime(),
+        checked: false,
+        type: inputTodoType.toString());
     setState(() {
       todoList.add(item);
       title = "";
-      description = "";
     });
     _tittleController.clear();
     _descriptionController.clear();
@@ -94,6 +118,21 @@ class _MainCoreState extends State<MainCore> {
     window.onPlatformBrightnessChanged = () {
       context.read<MainStore>().changeTheme(window.platformBrightness);
     };
+    _tabController =
+        TabController(vsync: this, length: typeTabs.length, initialIndex: 0);
+    _tabController.addListener(handleListenerTabsController);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _tabController.dispose();
+  }
+
+  void handleListenerTabsController() {
+    setState(() {
+      tabTodoType = tabIndexTypeMap[_tabController.index];
+    });
   }
 
   void init() async {
@@ -105,7 +144,6 @@ class _MainCoreState extends State<MainCore> {
             items.map((item) => TodoItem.fromJson(json.decode(item))).toList();
       });
     }
-    // handleEditPressed(3);
   }
 
   void setPrefsTodoList() async {
@@ -117,11 +155,9 @@ class _MainCoreState extends State<MainCore> {
 
   void handleEditPressed(int index, List<TodoItem> list) {
     TodoItem current = list[index];
-    String editTitle = current.title, editDescription = current.description;
+    String editTitle = current.title;
     var titleDecoration =
         _titleInputDecoration.copyWith(border: const UnderlineInputBorder());
-    var descriptionDecoration = _descriptionInputDecoration.copyWith(
-        border: const UnderlineInputBorder());
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -137,11 +173,6 @@ class _MainCoreState extends State<MainCore> {
                 decoration: titleDecoration,
                 // decoration: titleDecoration,
               ),
-              TextFormField(
-                initialValue: editDescription,
-                onChanged: (value) => editDescription = value,
-                decoration: descriptionDecoration,
-              )
             ],
           ),
         ),
@@ -156,7 +187,6 @@ class _MainCoreState extends State<MainCore> {
               setState(() {
                 int index = todoList.indexOf(current);
                 todoList[index].title = editTitle;
-                todoList[index].description = editDescription;
               });
             },
             child: const Text('OK'),
@@ -166,14 +196,106 @@ class _MainCoreState extends State<MainCore> {
     );
   }
 
+  void handleAddPressClick() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Add todo'),
+            IconButton(
+                onPressed: () => Navigator.pop(context, 'Cancel'),
+                icon: const Opacity(
+                  opacity: 0.5,
+                  child: Icon(
+                    Icons.close,
+                  ),
+                ))
+          ],
+        ),
+        content: StatefulBuilder(
+          builder:
+              (BuildContext context, void Function(void Function()) setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _tittleController,
+                  decoration: _titleInputDecoration,
+                  onChanged: (value) => setState(() => title = value),
+                  onSubmitted: (value) {
+                    if (value.isNotEmpty) {
+                      handleAddClick();
+                    }
+                  },
+                ),
+                space,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Radio(
+                            value: TodoType.normal,
+                            groupValue: inputTodoType,
+                            onChanged: (TodoType? value) {
+                              setState(() {
+                                inputTodoType = value;
+                              });
+                            }),
+                        const Text('normal'),
+                        Radio(
+                            value: TodoType.important,
+                            groupValue: inputTodoType,
+                            onChanged: (TodoType? value) {
+                              setState(() {
+                                inputTodoType = value;
+                              });
+                            }),
+                        const Text('important'),
+                        Radio(
+                            value: TodoType.urgent,
+                            groupValue: inputTodoType,
+                            onChanged: (TodoType? value) {
+                              setState(() {
+                                inputTodoType = value;
+                              });
+                            }),
+                        const Text('urgent'),
+                      ],
+                    ),
+                    const SizedBox(
+                      width: 25,
+                    ),
+                    ElevatedButton(
+                      onPressed: title.isNotEmpty ? handleAddClick : null,
+                      style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 50)),
+                      child: const Text(
+                        'Add',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ],
+                ),
+                space,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget space = const SizedBox(
     height: 15,
   );
   final InputDecoration _titleInputDecoration = const InputDecoration(
-      labelText: "Title", hintText: "Todo title", border: OutlineInputBorder());
-  final InputDecoration _descriptionInputDecoration = const InputDecoration(
-      labelText: "Description",
-      hintText: "Todo Description",
+      labelText: "What needs to be done?",
+      hintText: "Todo title",
       border: OutlineInputBorder());
 
   var baseDeleteConfirmDialog = createDeleteConfirmDialog();
@@ -202,44 +324,27 @@ class _MainCoreState extends State<MainCore> {
         : filterType == TodoItemFilterType.active
             ? activeTodoList
             : completeTodoList;
+    if (_tabController.index != typeTabs.length - 1) {
+      renderTodoList = renderTodoList
+          .where((element) => element.type == tabTodoType.toString())
+          .toList();
+    }
     Color actionBackgroundColor = context.watch<MainStore>().openNightMode
         ? Theme.of(context).cardColor
         : Colors.white;
     return Container(
-      child: Column(children: [
-        const Text(
-          'What needs to be done?',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 25),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        TabBar(
+          controller: _tabController,
+          unselectedLabelColor: context.watch<MainStore>().textColor,
+          labelColor: context.watch<MainStore>().primaryColor,
+          indicatorColor: context.watch<MainStore>().primaryColor,
+          tabs: typeTabs,
+          labelStyle: const TextStyle(fontSize: 16),
         ),
-        space,
-        TextField(
-          controller: _tittleController,
-          decoration: _titleInputDecoration,
-          onChanged: (value) => setState(() => title = value),
-          onSubmitted: (value) {
-            if (value.isNotEmpty) {
-              handleAddClick();
-            }
-          },
+        const SizedBox(
+          height: 5,
         ),
-        space,
-        TextField(
-            controller: _descriptionController,
-            decoration: _descriptionInputDecoration,
-            onChanged: (value) => setState(() => description = value)),
-        space,
-        ElevatedButton(
-          onPressed: title.isNotEmpty ? handleAddClick : null,
-          style: ElevatedButton.styleFrom(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 12, horizontal: 50)),
-          child: const Text(
-            'Add',
-            style: TextStyle(fontSize: 18),
-          ),
-        ),
-        space,
         Expanded(
           child: renderTodoList.isNotEmpty
               ? SlidableAutoCloseBehavior(
@@ -249,7 +354,7 @@ class _MainCoreState extends State<MainCore> {
                     itemBuilder: (BuildContext context, int index) {
                       bool checked = renderTodoList[index].checked;
                       String title = renderTodoList[index].title;
-                      String description = renderTodoList[index].description;
+                      String? type = renderTodoList[index].type;
                       TextDecoration decoration = checked
                           ? TextDecoration.lineThrough
                           : TextDecoration.none;
@@ -287,24 +392,21 @@ class _MainCoreState extends State<MainCore> {
                         ),
                         child: Card(
                           child: AnimatedOpacity(
-                            opacity: checked ? 0.6 : 1,
+                            opacity: checked ? 0.4 : 1,
                             duration: const Duration(milliseconds: 300),
                             child: ListTile(
                               title: Text(title,
                                   style: TextStyle(
                                     decoration: decoration,
                                   )),
-                              subtitle: description.isEmpty
-                                  ? null
-                                  : Text(description,
-                                      style: TextStyle(
-                                        decoration: decoration,
-                                      )),
                               leading: Checkbox(
                                 value: checked,
+                                shape: const CircleBorder(),
                                 onChanged: (value) {
                                   setState(() {
-                                    todoList[index].checked = value!;
+                                    int originIndex =
+                                        todoList.indexOf(renderTodoList[index]);
+                                    todoList[originIndex].checked = value!;
                                   });
                                   setPrefsTodoList();
                                 },
@@ -319,6 +421,7 @@ class _MainCoreState extends State<MainCore> {
                                   )
                                 ],
                               ),
+                              subtitle: Text(type.split('.')[1]),
                             ),
                           ),
                         ),
@@ -355,7 +458,7 @@ class _MainCoreState extends State<MainCore> {
             ToggleButtons(
               constraints: const BoxConstraints(
                 minHeight: 40.0,
-                minWidth: 80.0,
+                minWidth: 70.0,
               ),
               children: const <Widget>[
                 Text('All'),
@@ -393,6 +496,11 @@ class _MainCoreState extends State<MainCore> {
                 });
               },
             ),
+            FloatingActionButton(
+              onPressed: handleAddPressClick,
+              backgroundColor: context.watch<MainStore>().primaryColor,
+              child: const Icon(Icons.add),
+            ),
           ],
         ),
       ]),
@@ -423,6 +531,7 @@ Map<String, Function> createDeleteConfirmDialog(
               StatefulBuilder(builder: (context, setState) {
                 return Checkbox(
                   value: _checkboxValue,
+                  shape: const CircleBorder(),
                   onChanged: (bool? value) {
                     setState(() => _checkboxValue = !_checkboxValue);
                   },

@@ -11,6 +11,7 @@ class MainStore with ChangeNotifier {
   Brightness get brightness =>
       openNightMode ? Brightness.dark : Brightness.light;
 
+  Color get textColor => openNightMode ? Colors.white : Colors.black;
   changePrickerPrimaryColorIndex(int index) {
     pickPrimaryColorIndex = index;
     notifyListeners();
