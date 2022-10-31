@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:date_format/date_format.dart';
+import 'package:todo_client/common/buildScaleAnimatedSwitcher.dart';
 import 'package:todo_client/main.dart';
 import 'package:todo_client/state/mainStore.dart';
 
@@ -28,10 +29,12 @@ class TodoItem {
   late String updateTime;
   late bool checked;
   late String type;
+  late bool selected;
   TodoItem({
     required this.title,
     required this.updateTime,
     required this.type,
+    required this.selected,
     this.checked = true,
   });
 
@@ -40,6 +43,7 @@ class TodoItem {
     title = json['title'];
     updateTime = json['updateTime'];
     checked = json['checked'];
+    selected = json['selected'];
     type = json['type'];
   }
 
@@ -49,6 +53,7 @@ class TodoItem {
     data['updateTime'] = updateTime;
     data['checked'] = checked;
     data['type'] = type;
+    data['selected'] = selected;
     return data;
   }
 }
@@ -65,12 +70,17 @@ class _MainCoreState extends State<MainCore>
     with SingleTickerProviderStateMixin {
   String title = '';
   List<TodoItem> todoList = [];
+  List<TodoItem> selectTodoListList = [];
   TodoType? inputTodoType = TodoType.normal;
   TodoType? tabTodoType = TodoType.normal;
   TodoItemFilterType filterType = TodoItemFilterType.all;
-
   late TabController _tabController;
 
+  // 是否多选
+  bool showMultiple = false;
+  // 多选菜单CheckBox
+  bool multipleChecked = false;
+  final Duration _duration = const Duration(milliseconds: 300);
   List<TodoItem> get completeTodoList =>
       todoList.where((element) => element.checked).toList();
   List<TodoItem> get activeTodoList =>
@@ -90,10 +100,12 @@ class _MainCoreState extends State<MainCore>
     2: TodoType.urgent,
   };
   void handleAddClick() {
+    if (title.isEmpty) return;
     TodoItem item = TodoItem(
         title: title,
         updateTime: getCurrentTime(),
         checked: false,
+        selected: false,
         type: inputTodoType.toString());
     setState(() {
       todoList.add(item);
@@ -151,6 +163,10 @@ class _MainCoreState extends State<MainCore>
       prefs.setStringList('todoList',
           todoList.map((item) => json.encode(item.toJson())).toList());
     });
+  }
+
+  int getTodoItemIndex(TodoItem item) {
+    return todoList.indexOf(item);
   }
 
   void handleEditPressed(int index, List<TodoItem> list) {
@@ -290,6 +306,101 @@ class _MainCoreState extends State<MainCore>
     );
   }
 
+  void handleTodoCheckedChange(TodoItem item, bool? value) {
+    setState(() {
+      int originIndex = todoList.indexOf(item);
+      todoList[originIndex].checked = value!;
+    });
+    setPrefsTodoList();
+  }
+
+  void showMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        width: 200,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+        content: Text('not empty!'),
+      ),
+    );
+  }
+
+  void openOrCloseBottomSheet(List<TodoItem> renderTodoList) {
+    if (showMultiple) {
+      Scaffold.of(context).showBottomSheet((BuildContext context) {
+        return StatefulBuilder(
+            builder: ((context, setInnerState) => SizedBox(
+                  height: 60,
+                  child: Card(
+                    margin: const EdgeInsets.all(0),
+                    child: Padding(
+                      padding: const EdgeInsets.all(5),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton(
+                              onPressed: () async {
+                                if (selectTodoListList.isEmpty) {
+                                  return showMessage();
+                                }
+                                if (await baseDeleteConfirmDialog['show']!() !=
+                                    null) {
+                                  for (TodoItem element in selectTodoListList) {
+                                    todoList.remove(element);
+                                  }
+                                  setPrefsTodoList();
+                                  selectTodoListList.clear();
+                                  if (todoList.isEmpty) {
+                                    showMultiple = false;
+                                    Navigator.of(context).pop();
+                                  }
+                                }
+                                setState(() {});
+                              },
+                              child: const Text('delete')),
+                          TextButton(
+                              onPressed: () {
+                                if (selectTodoListList.isEmpty) {
+                                  return showMessage();
+                                }
+                                setState(() {
+                                  multipleChecked = !multipleChecked;
+                                  for (TodoItem element in selectTodoListList) {
+                                    todoList[getTodoItemIndex(element)]
+                                        .checked = multipleChecked;
+                                  }
+                                });
+                                setPrefsTodoList();
+                              },
+                              child: Row(
+                                children: const [Text('toggle todo active')],
+                              ))
+                        ],
+                      ),
+                    ),
+                  ),
+                )));
+      });
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void handleTodoSelectCheckBoxChange(TodoItem item, bool? value) {
+    setState(() {
+      todoList[getTodoItemIndex(item)].selected = value!;
+      changeSelectTodoList(value, item);
+    });
+  }
+
+  void changeSelectTodoList(bool value, TodoItem item) {
+    if (value) {
+      selectTodoListList.add(item);
+    } else {
+      selectTodoListList.remove(item);
+    }
+  }
+
   Widget space = const SizedBox(
     height: 15,
   );
@@ -329,11 +440,61 @@ class _MainCoreState extends State<MainCore>
           .where((element) => element.type == tabTodoType.toString())
           .toList();
     }
-    Color actionBackgroundColor = context.watch<MainStore>().openNightMode
-        ? Theme.of(context).cardColor
-        : Colors.white;
+    bool isSelectAll = renderTodoList.length == selectTodoListList.length;
+    Widget multipleMessage = AnimatedContainer(
+        duration: _duration,
+        height: showMultiple ? 50 : 0,
+        padding: const EdgeInsets.all(5),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Transform.scale(
+              scale: 0.7,
+              child: showMultiple
+                  ? IconButton(
+                      onPressed: () {
+                        setState(() {
+                          showMultiple = false;
+                          for (var element in todoList) {
+                            element.selected = false;
+                          }
+                          openOrCloseBottomSheet(renderTodoList);
+                        });
+                        selectTodoListList.clear();
+                      },
+                      icon: const Icon(Icons.close),
+                    )
+                  : null,
+            ),
+            Text(
+              'selected ${selectTodoListList.length} item',
+              style: const TextStyle(fontSize: 16),
+            ),
+            Transform.scale(
+              scale: 0.7,
+              child: showMultiple
+                  ? IconButton(
+                      onPressed: () {
+                        setState(() {
+                          for (TodoItem todoItem in renderTodoList) {
+                            todoList[getTodoItemIndex(todoItem)].selected =
+                                !isSelectAll;
+                            changeSelectTodoList(!isSelectAll, todoItem);
+                          }
+                        });
+                      },
+                      icon: Icon(
+                        isSelectAll
+                            ? Icons.check_box_outlined
+                            : Icons.check_box_outline_blank_sharp,
+                      ),
+                    )
+                  : null,
+            ),
+          ],
+        ));
     return Container(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      child: Column(children: [
         TabBar(
           controller: _tabController,
           unselectedLabelColor: context.watch<MainStore>().textColor,
@@ -345,6 +506,7 @@ class _MainCoreState extends State<MainCore>
         const SizedBox(
           height: 5,
         ),
+        multipleMessage,
         Expanded(
           child: renderTodoList.isNotEmpty
               ? SlidableAutoCloseBehavior(
@@ -355,6 +517,8 @@ class _MainCoreState extends State<MainCore>
                       bool checked = renderTodoList[index].checked;
                       String title = renderTodoList[index].title;
                       String? type = renderTodoList[index].type;
+                      bool todoSelected = renderTodoList[index].selected;
+                      TodoItem item = renderTodoList[index];
                       TextDecoration decoration = checked
                           ? TextDecoration.lineThrough
                           : TextDecoration.none;
@@ -366,8 +530,10 @@ class _MainCoreState extends State<MainCore>
                           extentRatio: 0.2,
                           children: [
                             SlidableAction(
-                              icon: Icons.close_outlined,
-                              backgroundColor: actionBackgroundColor,
+                              icon: Icons.clear,
+                              backgroundColor: Colors.transparent,
+                              foregroundColor:
+                                  context.watch<MainStore>().textColor,
                               onPressed: (BuildContext context) async {
                                 if (await baseDeleteConfirmDialog['show']!() !=
                                     null) {
@@ -382,7 +548,9 @@ class _MainCoreState extends State<MainCore>
                             ),
                             SlidableAction(
                               icon: Icons.edit,
-                              backgroundColor: actionBackgroundColor,
+                              foregroundColor:
+                                  context.watch<MainStore>().textColor,
+                              backgroundColor: Colors.transparent,
                               onPressed: (_) =>
                                   handleEditPressed(index, renderTodoList),
                               borderRadius:
@@ -395,29 +563,72 @@ class _MainCoreState extends State<MainCore>
                             opacity: checked ? 0.4 : 1,
                             duration: const Duration(milliseconds: 300),
                             child: ListTile(
+                              onLongPress: () {
+                                setState(() {
+                                  if (!showMultiple) {
+                                    todoList[getTodoItemIndex(item)].selected =
+                                        !todoSelected;
+                                  } else {
+                                    for (var element in todoList) {
+                                      element.selected = false;
+                                    }
+                                  }
+                                  showMultiple = !showMultiple;
+                                  changeSelectTodoList(showMultiple, item);
+                                });
+                                openOrCloseBottomSheet(renderTodoList);
+                              },
+                              selected: todoSelected,
                               title: Text(title,
                                   style: TextStyle(
                                     decoration: decoration,
                                   )),
-                              leading: Checkbox(
-                                value: checked,
-                                shape: const CircleBorder(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    int originIndex =
-                                        todoList.indexOf(renderTodoList[index]);
-                                    todoList[originIndex].checked = value!;
-                                  });
-                                  setPrefsTodoList();
-                                },
+                              leading: buildScaleAnimatedSwitcher(
+                                SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  key: ValueKey(showMultiple),
+                                  child: showMultiple
+                                      ? ReorderableDragStartListener(
+                                          index: index,
+                                          child: const Icon(
+                                            Icons.drag_handle_outlined,
+                                          ),
+                                        )
+                                      : Checkbox(
+                                          value: checked,
+                                          shape: const CircleBorder(),
+                                          onChanged: (value) {
+                                            handleTodoCheckedChange(
+                                                renderTodoList[index], value);
+                                          },
+                                        ),
+                                ),
                               ),
                               trailing: Wrap(
                                 spacing: 5,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   Text(renderTodoList[index].updateTime),
-                                  ReorderableDragStartListener(
-                                    index: index,
-                                    child: const Icon(Icons.drag_handle_sharp),
+                                  buildScaleAnimatedSwitcher(
+                                    SizedBox(
+                                        width: 30,
+                                        height: 30,
+                                        key: ValueKey(showMultiple),
+                                        child: showMultiple
+                                            ? Checkbox(
+                                                value: todoSelected,
+                                                onChanged: (value) {
+                                                  handleTodoSelectCheckBoxChange(
+                                                      item, value);
+                                                },
+                                              )
+                                            : ReorderableDragStartListener(
+                                                index: index,
+                                                child: const Icon(
+                                                  Icons.drag_handle_sharp,
+                                                ),
+                                              )),
                                   )
                                 ],
                               ),
@@ -496,11 +707,13 @@ class _MainCoreState extends State<MainCore>
                 });
               },
             ),
-            FloatingActionButton(
-              onPressed: handleAddPressClick,
-              backgroundColor: context.watch<MainStore>().primaryColor,
-              child: const Icon(Icons.add),
-            ),
+            showMultiple
+                ? Container()
+                : FloatingActionButton(
+                    onPressed: handleAddPressClick,
+                    backgroundColor: context.watch<MainStore>().primaryColor,
+                    child: const Icon(Icons.add),
+                  )
           ],
         ),
       ]),
