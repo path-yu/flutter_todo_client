@@ -401,6 +401,16 @@ class _MainCoreState extends State<MainCore>
     }
   }
 
+  void resetMultipleState() {
+    setState(() {
+      showMultiple = false;
+      selectTodoListList.clear();
+      for (var element in todoList) {
+        element.selected = false;
+      }
+    });
+  }
+
   Widget space = const SizedBox(
     height: 15,
   );
@@ -453,14 +463,8 @@ class _MainCoreState extends State<MainCore>
               child: showMultiple
                   ? IconButton(
                       onPressed: () {
-                        setState(() {
-                          showMultiple = false;
-                          for (var element in todoList) {
-                            element.selected = false;
-                          }
-                          openOrCloseBottomSheet(renderTodoList);
-                        });
-                        selectTodoListList.clear();
+                        openOrCloseBottomSheet(renderTodoList);
+                        resetMultipleState();
                       },
                       icon: const Icon(Icons.close),
                     )
@@ -479,7 +483,11 @@ class _MainCoreState extends State<MainCore>
                           for (TodoItem todoItem in renderTodoList) {
                             todoList[getTodoItemIndex(todoItem)].selected =
                                 !isSelectAll;
-                            changeSelectTodoList(!isSelectAll, todoItem);
+                          }
+                          if (isSelectAll) {
+                            selectTodoListList.clear();
+                          } else {
+                            selectTodoListList = renderTodoList;
                           }
                         });
                       },
@@ -493,231 +501,241 @@ class _MainCoreState extends State<MainCore>
             ),
           ],
         ));
-    return Container(
-      child: Column(children: [
-        TabBar(
-          controller: _tabController,
-          unselectedLabelColor: context.watch<MainStore>().textColor,
-          labelColor: context.watch<MainStore>().primaryColor,
-          indicatorColor: context.watch<MainStore>().primaryColor,
-          tabs: typeTabs,
-          labelStyle: const TextStyle(fontSize: 16),
-        ),
-        const SizedBox(
-          height: 5,
-        ),
-        multipleMessage,
-        Expanded(
-          child: renderTodoList.isNotEmpty
-              ? SlidableAutoCloseBehavior(
-                  child: ReorderableListView.builder(
-                    proxyDecorator: proxyDecorator,
-                    buildDefaultDragHandles: false,
-                    itemBuilder: (BuildContext context, int index) {
-                      bool checked = renderTodoList[index].checked;
-                      String title = renderTodoList[index].title;
-                      String? type = renderTodoList[index].type;
-                      bool todoSelected = renderTodoList[index].selected;
-                      TodoItem item = renderTodoList[index];
-                      TextDecoration decoration = checked
-                          ? TextDecoration.lineThrough
-                          : TextDecoration.none;
-                      return Slidable(
-                        groupTag: '0',
-                        key: Key('$index'),
-                        endActionPane: ActionPane(
-                          motion: const ScrollMotion(),
-                          extentRatio: 0.2,
-                          children: [
-                            SlidableAction(
-                              icon: Icons.clear,
-                              backgroundColor: Colors.transparent,
-                              foregroundColor:
-                                  context.watch<MainStore>().textColor,
-                              onPressed: (BuildContext context) async {
-                                if (await baseDeleteConfirmDialog['show']!() !=
-                                    null) {
-                                  setState(() {
-                                    todoList.removeAt(index);
-                                  });
-                                  setPrefsTodoList();
-                                }
-                              },
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(5)),
-                            ),
-                            SlidableAction(
-                              icon: Icons.edit,
-                              foregroundColor:
-                                  context.watch<MainStore>().textColor,
-                              backgroundColor: Colors.transparent,
-                              onPressed: (_) =>
-                                  handleEditPressed(index, renderTodoList),
-                              borderRadius:
-                                  const BorderRadius.all(Radius.circular(5)),
-                            ),
-                          ],
-                        ),
-                        child: Card(
-                          child: AnimatedOpacity(
-                            opacity: checked ? 0.4 : 1,
-                            duration: const Duration(milliseconds: 300),
-                            child: ListTile(
-                              onLongPress: () {
-                                setState(() {
-                                  if (!showMultiple) {
-                                    todoList[getTodoItemIndex(item)].selected =
-                                        !todoSelected;
-                                  } else {
-                                    for (var element in todoList) {
-                                      element.selected = false;
-                                    }
+    return GestureDetector(
+      onSecondaryTap: () {
+        if (showMultiple) {
+          resetMultipleState();
+          Navigator.of(context).pop();
+        }
+      },
+      child: Container(
+        child: Column(children: [
+          TabBar(
+            controller: _tabController,
+            unselectedLabelColor: context.watch<MainStore>().textColor,
+            labelColor: context.watch<MainStore>().primaryColor,
+            indicatorColor: context.watch<MainStore>().primaryColor,
+            tabs: typeTabs,
+            labelStyle: const TextStyle(fontSize: 16),
+          ),
+          const SizedBox(
+            height: 5,
+          ),
+          multipleMessage,
+          Expanded(
+            child: renderTodoList.isNotEmpty
+                ? SlidableAutoCloseBehavior(
+                    child: ReorderableListView.builder(
+                      proxyDecorator: proxyDecorator,
+                      buildDefaultDragHandles: false,
+                      itemBuilder: (BuildContext context, int index) {
+                        bool checked = renderTodoList[index].checked;
+                        String title = renderTodoList[index].title;
+                        String? type = renderTodoList[index].type;
+                        bool todoSelected = renderTodoList[index].selected;
+                        TodoItem item = renderTodoList[index];
+                        TextDecoration decoration = checked
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none;
+                        return Slidable(
+                          groupTag: '0',
+                          key: Key('$index'),
+                          endActionPane: ActionPane(
+                            motion: const ScrollMotion(),
+                            extentRatio: 0.2,
+                            children: [
+                              SlidableAction(
+                                icon: Icons.clear,
+                                backgroundColor: Colors.transparent,
+                                foregroundColor:
+                                    context.watch<MainStore>().textColor,
+                                onPressed: (BuildContext context) async {
+                                  if (await baseDeleteConfirmDialog[
+                                          'show']!() !=
+                                      null) {
+                                    setState(() {
+                                      todoList.removeAt(index);
+                                    });
+                                    setPrefsTodoList();
                                   }
-                                  showMultiple = !showMultiple;
-                                  changeSelectTodoList(showMultiple, item);
-                                });
-                                openOrCloseBottomSheet(renderTodoList);
-                              },
-                              selected: todoSelected,
-                              title: Text(title,
-                                  style: TextStyle(
-                                    decoration: decoration,
-                                  )),
-                              leading: buildScaleAnimatedSwitcher(
-                                SizedBox(
-                                  width: 30,
-                                  height: 30,
-                                  key: ValueKey(showMultiple),
-                                  child: showMultiple
-                                      ? ReorderableDragStartListener(
-                                          index: index,
-                                          child: const Icon(
-                                            Icons.drag_handle_outlined,
+                                },
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(5)),
+                              ),
+                              SlidableAction(
+                                icon: Icons.edit,
+                                foregroundColor:
+                                    context.watch<MainStore>().textColor,
+                                backgroundColor: Colors.transparent,
+                                onPressed: (_) =>
+                                    handleEditPressed(index, renderTodoList),
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(5)),
+                              ),
+                            ],
+                          ),
+                          child: Card(
+                            child: AnimatedOpacity(
+                              opacity: checked ? 0.4 : 1,
+                              duration: const Duration(milliseconds: 300),
+                              child: ListTile(
+                                onLongPress: () {
+                                  setState(() {
+                                    if (!showMultiple) {
+                                      todoList[getTodoItemIndex(item)]
+                                          .selected = true;
+                                      selectTodoListList.add(item);
+                                    } else {
+                                      for (var element in todoList) {
+                                        element.selected = false;
+                                      }
+                                      selectTodoListList.clear();
+                                    }
+                                    showMultiple = !showMultiple;
+                                  });
+                                  openOrCloseBottomSheet(renderTodoList);
+                                },
+                                selected: todoSelected,
+                                title: Text(title,
+                                    style: TextStyle(
+                                      decoration: decoration,
+                                    )),
+                                leading: buildScaleAnimatedSwitcher(
+                                  SizedBox(
+                                    width: 30,
+                                    height: 30,
+                                    key: ValueKey(showMultiple),
+                                    child: showMultiple
+                                        ? ReorderableDragStartListener(
+                                            index: index,
+                                            child: const Icon(
+                                              Icons.drag_handle_outlined,
+                                            ),
+                                          )
+                                        : Checkbox(
+                                            value: checked,
+                                            shape: const CircleBorder(),
+                                            onChanged: (value) {
+                                              handleTodoCheckedChange(
+                                                  renderTodoList[index], value);
+                                            },
                                           ),
-                                        )
-                                      : Checkbox(
-                                          value: checked,
-                                          shape: const CircleBorder(),
-                                          onChanged: (value) {
-                                            handleTodoCheckedChange(
-                                                renderTodoList[index], value);
-                                          },
-                                        ),
+                                  ),
                                 ),
+                                trailing: Wrap(
+                                  spacing: 5,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(renderTodoList[index].updateTime),
+                                    buildScaleAnimatedSwitcher(
+                                      SizedBox(
+                                          width: 30,
+                                          height: 30,
+                                          key: ValueKey(showMultiple),
+                                          child: showMultiple
+                                              ? Checkbox(
+                                                  value: todoSelected,
+                                                  onChanged: (value) {
+                                                    handleTodoSelectCheckBoxChange(
+                                                        item, value);
+                                                  },
+                                                )
+                                              : ReorderableDragStartListener(
+                                                  index: index,
+                                                  child: const Icon(
+                                                    Icons.drag_handle_sharp,
+                                                  ),
+                                                )),
+                                    )
+                                  ],
+                                ),
+                                subtitle: Text(type.split('.')[1]),
                               ),
-                              trailing: Wrap(
-                                spacing: 5,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Text(renderTodoList[index].updateTime),
-                                  buildScaleAnimatedSwitcher(
-                                    SizedBox(
-                                        width: 30,
-                                        height: 30,
-                                        key: ValueKey(showMultiple),
-                                        child: showMultiple
-                                            ? Checkbox(
-                                                value: todoSelected,
-                                                onChanged: (value) {
-                                                  handleTodoSelectCheckBoxChange(
-                                                      item, value);
-                                                },
-                                              )
-                                            : ReorderableDragStartListener(
-                                                index: index,
-                                                child: const Icon(
-                                                  Icons.drag_handle_sharp,
-                                                ),
-                                              )),
-                                  )
-                                ],
-                              ),
-                              subtitle: Text(type.split('.')[1]),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                    itemCount: renderTodoList.length,
-                    onReorder: (int oldIndex, int newIndex) {
-                      setState(() {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
-                        TodoItem item = todoList.removeAt(oldIndex);
-                        todoList.insert(newIndex, item);
-                      });
-                      setPrefsTodoList();
-                    },
-                  ),
-                )
-              : const Center(
-                  child: Text(
-                    'list is empty!',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                ),
-        ),
-        space,
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '${activeTodoList.length} item left',
-              style: const TextStyle(fontSize: 16),
-            ),
-            ToggleButtons(
-              constraints: const BoxConstraints(
-                minHeight: 40.0,
-                minWidth: 70.0,
-              ),
-              children: const <Widget>[
-                Text('All'),
-                Text('Active'),
-                Text('Complete')
-              ],
-              onPressed: (int index) {
-                setState(() {
-                  for (int buttonIndex = 0;
-                      buttonIndex < _selectedListType.length;
-                      buttonIndex++) {
-                    if (buttonIndex == index) {
-                      _selectedListType[buttonIndex] =
-                          !_selectedListType[buttonIndex];
-                    } else {
-                      _selectedListType[buttonIndex] = false;
-                    }
-                  }
-                  filterType = todoItemFilterTypeIndexMap[index]!;
-                });
-              },
-              isSelected: _selectedListType,
-              renderBorder: false,
-              fillColor: Colors.transparent,
-              hoverColor: Colors.transparent,
-            ),
-            TextButton(
-              child: const Text('Clear complete'),
-              onPressed: () {
-                setState(() {
-                  todoList = todoList
-                      .where((element) => element.checked == false)
-                      .toList();
-                  setPrefsTodoList();
-                });
-              },
-            ),
-            showMultiple
-                ? Container()
-                : FloatingActionButton(
-                    onPressed: handleAddPressClick,
-                    backgroundColor: context.watch<MainStore>().primaryColor,
-                    child: const Icon(Icons.add),
+                        );
+                      },
+                      itemCount: renderTodoList.length,
+                      onReorder: (int oldIndex, int newIndex) {
+                        setState(() {
+                          if (oldIndex < newIndex) {
+                            newIndex -= 1;
+                          }
+                          TodoItem item = todoList.removeAt(oldIndex);
+                          todoList.insert(newIndex, item);
+                        });
+                        setPrefsTodoList();
+                      },
+                    ),
                   )
-          ],
-        ),
-      ]),
-      padding: const EdgeInsets.all(20),
+                : const Center(
+                    child: Text(
+                      'list is empty!',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  ),
+          ),
+          space,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${activeTodoList.length} item left',
+                style: const TextStyle(fontSize: 16),
+              ),
+              ToggleButtons(
+                constraints: const BoxConstraints(
+                  minHeight: 40.0,
+                  minWidth: 70.0,
+                ),
+                children: const <Widget>[
+                  Text('All'),
+                  Text('Active'),
+                  Text('Complete')
+                ],
+                onPressed: (int index) {
+                  setState(() {
+                    for (int buttonIndex = 0;
+                        buttonIndex < _selectedListType.length;
+                        buttonIndex++) {
+                      if (buttonIndex == index) {
+                        _selectedListType[buttonIndex] =
+                            !_selectedListType[buttonIndex];
+                      } else {
+                        _selectedListType[buttonIndex] = false;
+                      }
+                    }
+                    filterType = todoItemFilterTypeIndexMap[index]!;
+                  });
+                },
+                isSelected: _selectedListType,
+                renderBorder: false,
+                fillColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+              ),
+              TextButton(
+                child: const Text('Clear complete'),
+                onPressed: () {
+                  setState(() {
+                    todoList = todoList
+                        .where((element) => element.checked == false)
+                        .toList();
+                    setPrefsTodoList();
+                  });
+                },
+              ),
+              showMultiple
+                  ? Container()
+                  : FloatingActionButton(
+                      onPressed: handleAddPressClick,
+                      backgroundColor: context.watch<MainStore>().primaryColor,
+                      child: const Icon(Icons.add),
+                    )
+            ],
+          ),
+        ]),
+        padding: const EdgeInsets.all(20),
+      ),
     );
   }
 }
