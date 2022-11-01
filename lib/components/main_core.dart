@@ -409,6 +409,7 @@ class _MainCoreState extends State<MainCore>
         element.selected = false;
       }
     });
+    Navigator.of(context).pop();
   }
 
   Widget space = const SizedBox(
@@ -462,10 +463,7 @@ class _MainCoreState extends State<MainCore>
               scale: 0.7,
               child: showMultiple
                   ? IconButton(
-                      onPressed: () {
-                        openOrCloseBottomSheet(renderTodoList);
-                        resetMultipleState();
-                      },
+                      onPressed: resetMultipleState,
                       icon: const Icon(Icons.close),
                     )
                   : null,
@@ -487,7 +485,7 @@ class _MainCoreState extends State<MainCore>
                           if (isSelectAll) {
                             selectTodoListList.clear();
                           } else {
-                            selectTodoListList = renderTodoList;
+                            selectTodoListList = [...renderTodoList];
                           }
                         });
                       },
@@ -505,7 +503,6 @@ class _MainCoreState extends State<MainCore>
       onSecondaryTap: () {
         if (showMultiple) {
           resetMultipleState();
-          Navigator.of(context).pop();
         }
       },
       child: Container(
