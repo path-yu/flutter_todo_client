@@ -387,16 +387,22 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                 }
                                 if (await baseDeleteConfirmDialog['show']!() !=
                                     null) {
-                                  for (TodoItem element in selectTodoListList) {
+                                  var cloneSelectTodoList = [
+                                    ...selectTodoListList
+                                  ];
+                                  for (TodoItem element
+                                      in cloneSelectTodoList) {
                                     await element.controller
                                         .reverse()
                                         .then((value) {
                                       element.controller.dispose();
-                                      setState(() => todoList.remove(element));
+                                      setState(() {
+                                        todoList.remove(element);
+                                        selectTodoListList.remove(element);
+                                      });
                                     });
                                   }
                                   setPrefsTodoList();
-                                  selectTodoListList.clear();
                                   if (todoList.isEmpty) {
                                     resetMultipleState();
                                   }
