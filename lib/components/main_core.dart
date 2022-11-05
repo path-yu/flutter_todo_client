@@ -110,6 +110,11 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     1: TodoType.important,
     2: TodoType.urgent,
   };
+  Map<TodoType, int> tabTypeIndexMap = {
+    TodoType.normal: 0,
+    TodoType.important: 1,
+    TodoType.urgent: 2,
+  };
   void handleAddClick() {
     if (title.isEmpty) return;
     var controller = _createAnimationController();
@@ -124,6 +129,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     setState(() {
       todoList.add(item);
     });
+    _tabController.animateTo(tabTypeIndexMap[inputTodoType]!);
     item.controller.reset();
     item.controller.forward();
     _tittleController.clear();
