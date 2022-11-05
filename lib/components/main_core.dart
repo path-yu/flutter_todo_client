@@ -26,7 +26,7 @@ String getEnumTwoString(TodoType type) {
 
 class TodoItem {
   late String title;
-  late String updateTime;
+  late int createTime;
   late bool checked;
   late String type;
   late bool selected;
@@ -34,7 +34,7 @@ class TodoItem {
   late Animation<double> animation;
   TodoItem({
     required this.title,
-    required this.updateTime,
+    required this.createTime,
     required this.type,
     required this.selected,
     required this.controller,
@@ -45,7 +45,7 @@ class TodoItem {
   //将json 序列化为model对象
   TodoItem.fromJson(Map<String, dynamic> json) {
     title = json['title'];
-    updateTime = json['updateTime'];
+    createTime = json['createTime'];
     checked = json['checked'];
     selected = json['selected'];
     type = json['type'];
@@ -54,7 +54,7 @@ class TodoItem {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['title'] = title;
-    data['updateTime'] = updateTime;
+    data['createTime'] = createTime;
     data['checked'] = checked;
     data['type'] = type;
     data['selected'] = selected;
@@ -91,6 +91,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   bool showMultiple = false;
   // 多选菜单CheckBox
   bool multipleChecked = false;
+  DateTime selectDateTime = DateTime.now();
   final Duration _duration = const Duration(milliseconds: 300);
   List<TodoItem> get completeTodoList =>
       todoList.where((element) => element.checked).toList();
@@ -120,7 +121,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     var controller = _createAnimationController();
     TodoItem item = TodoItem(
         title: title,
-        updateTime: getCurrentTime(),
+        createTime: DateTime.now().millisecondsSinceEpoch,
         checked: false,
         selected: false,
         controller: controller,
@@ -137,8 +138,8 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     setPrefsTodoList();
   }
 
-  String getCurrentTime() {
-    DateTime now = DateTime.now();
+  String formatDateStr(int millisecondsSinceEpoch) {
+    DateTime now = DateTime.fromMillisecondsSinceEpoch(millisecondsSinceEpoch);
     // 储存当前时间并格式化
     return formatDate(now, [yyyy, '-', mm, '-', dd]);
   }
@@ -512,6 +513,10 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
           .where((element) => element.type == tabTodoType.toString())
           .toList();
     }
+    renderTodoList = renderTodoList.where((element) {
+      return formatDateStr(element.createTime) ==
+          formatDateStr(selectDateTime.millisecondsSinceEpoch);
+    }).toList();
     bool isSelectAll = renderTodoList.length == selectTodoListList.length;
     Widget multipleMessage = SizeTransition(
       sizeFactor: _animation,
@@ -566,13 +571,39 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
       },
       child: Container(
         child: Column(children: [
-          TabBar(
-            controller: _tabController,
-            unselectedLabelColor: context.watch<MainStore>().textColor,
-            labelColor: context.watch<MainStore>().primaryColor,
-            indicatorColor: context.watch<MainStore>().primaryColor,
-            tabs: typeTabs,
-            labelStyle: const TextStyle(fontSize: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TabBar(
+                  controller: _tabController,
+                  unselectedLabelColor: context.watch<MainStore>().textColor,
+                  labelColor: context.watch<MainStore>().primaryColor,
+                  indicatorColor: context.watch<MainStore>().primaryColor,
+                  tabs: typeTabs,
+                  labelStyle: const TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(
+                width: 10,
+              ),
+              OutlinedButton(
+                  onPressed: () async {
+                    var dateTime = await showDatePicker(
+                        context: context,
+                        initialDate: selectDateTime,
+                        confirmText: 'ok',
+                        cancelText: 'cancel',
+                        firstDate: DateTime(2022),
+                        lastDate: DateTime(2050));
+                    if (dateTime != null) {
+                      setState(() {
+                        selectDateTime = dateTime;
+                      });
+                    }
+                  },
+                  child: Text(
+                      formatDateStr(selectDateTime.millisecondsSinceEpoch)))
+            ],
           ),
           const SizedBox(
             height: 5,
@@ -693,7 +724,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                     crossAxisAlignment:
                                         WrapCrossAlignment.center,
                                     children: [
-                                      Text(renderTodoList[index].updateTime),
+                                      Text(formatDateStr(item.createTime)),
                                       buildScaleAnimatedSwitcher(
                                         SizedBox(
                                             width: 30,
