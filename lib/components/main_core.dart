@@ -78,6 +78,15 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   TodoType? tabTodoType = TodoType.normal;
   TodoItemFilterType filterType = TodoItemFilterType.all;
   late TabController _tabController;
+
+  late final AnimationController _controller = AnimationController(
+    duration: _duration,
+    vsync: this,
+  );
+  late final Animation<double> _animation = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.linear,
+  );
   // 是否多选
   bool showMultiple = false;
   // 多选菜单CheckBox
@@ -149,6 +158,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     for (var element in todoList) {
       element.controller.dispose();
     }
+    _controller.dispose();
   }
 
   AnimationController _createAnimationController() {
@@ -381,6 +391,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                     await element.controller
                                         .reverse()
                                         .then((value) {
+                                      element.controller.dispose();
                                       setState(() => todoList.remove(element));
                                     });
                                   }
@@ -438,15 +449,25 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
 
   void resetMultipleState() {
     setState(() {
-      showMultiple = false;
       selectTodoListList.clear();
       for (var element in todoList) {
         element.selected = false;
       }
     });
+    toggleMultipleShow(false);
     Navigator.of(context).pop();
   }
 
+  void toggleMultipleShow(bool show) {
+    setState(() => showMultiple = show);
+    if (showMultiple) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
   Widget space = const SizedBox(
     height: 15,
   );
@@ -487,53 +508,51 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
           .toList();
     }
     bool isSelectAll = renderTodoList.length == selectTodoListList.length;
-    Widget multipleMessage = AnimatedContainer(
-        duration: _duration,
-        height: showMultiple ? 50 : 0,
-        padding: const EdgeInsets.all(5),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Transform.scale(
-              scale: 0.7,
-              child: showMultiple
-                  ? IconButton(
-                      onPressed: resetMultipleState,
-                      icon: const Icon(Icons.close),
-                    )
-                  : null,
-            ),
-            Text(
-              'selected ${selectTodoListList.length} item',
-              style: const TextStyle(fontSize: 16),
-            ),
-            Transform.scale(
-              scale: 0.7,
-              child: showMultiple
-                  ? IconButton(
-                      onPressed: () {
-                        setState(() {
-                          for (TodoItem todoItem in renderTodoList) {
-                            todoList[getTodoItemIndex(todoItem)].selected =
-                                !isSelectAll;
-                          }
-                          if (isSelectAll) {
-                            selectTodoListList.clear();
-                          } else {
-                            selectTodoListList = [...renderTodoList];
-                          }
-                        });
-                      },
-                      icon: Icon(
-                        isSelectAll
-                            ? Icons.check_box_outlined
-                            : Icons.check_box_outline_blank_sharp,
-                      ),
-                    )
-                  : null,
-            ),
-          ],
-        ));
+    Widget multipleMessage = SizeTransition(
+      sizeFactor: _animation,
+      axis: Axis.vertical,
+      child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Transform.scale(
+                scale: 0.7,
+                child: IconButton(
+                  onPressed: resetMultipleState,
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+              Text(
+                'selected ${selectTodoListList.length} item',
+                style: const TextStyle(fontSize: 16),
+              ),
+              Transform.scale(
+                scale: 0.7,
+                child: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      for (TodoItem todoItem in renderTodoList) {
+                        todoList[getTodoItemIndex(todoItem)].selected =
+                            !isSelectAll;
+                      }
+                      if (isSelectAll) {
+                        selectTodoListList.clear();
+                      } else {
+                        selectTodoListList = [...renderTodoList];
+                      }
+                    });
+                  },
+                  icon: Icon(
+                    isSelectAll
+                        ? Icons.check_box_outlined
+                        : Icons.check_box_outline_blank_sharp,
+                  ),
+                ),
+              ),
+            ],
+          )),
+    );
     return GestureDetector(
       onSecondaryTap: () {
         if (showMultiple) {
@@ -589,6 +608,9 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                       setState(() {
                                         todoList.removeAt(index);
                                       });
+                                      if (todoList.isEmpty) {
+                                        resetMultipleState();
+                                      }
                                       setPrefsTodoList();
                                       item.controller.dispose();
                                     });
@@ -629,7 +651,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                         }
                                         selectTodoListList.clear();
                                       }
-                                      showMultiple = !showMultiple;
+                                      toggleMultipleShow(!showMultiple);
                                     });
                                     openOrCloseBottomSheet(renderTodoList);
                                   },
