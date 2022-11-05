@@ -123,7 +123,6 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
         type: inputTodoType.toString());
     setState(() {
       todoList.add(item);
-      title = "";
     });
     item.controller.reset();
     item.controller.forward();
@@ -273,19 +272,20 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
           ],
         ),
         content: StatefulBuilder(
-          builder:
-              (BuildContext context, void Function(void Function()) setState) {
+          builder: (BuildContext context,
+              void Function(void Function()) setInnerState) {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: _tittleController,
                   decoration: _titleInputDecoration,
-                  onChanged: (value) => setState(() => title = value),
+                  onChanged: (value) => setInnerState(() => title = value),
                   onSubmitted: (value) {
-                    if (value.isNotEmpty) {
-                      handleAddClick();
-                    }
+                    handleAddClick();
+                    setInnerState(() {
+                      title = '';
+                    });
                   },
                 ),
                 space,
@@ -299,27 +299,21 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                             value: TodoType.normal,
                             groupValue: inputTodoType,
                             onChanged: (TodoType? value) {
-                              setState(() {
-                                inputTodoType = value;
-                              });
+                              setInnerState(() => inputTodoType = value);
                             }),
                         const Text('normal'),
                         Radio(
                             value: TodoType.important,
                             groupValue: inputTodoType,
                             onChanged: (TodoType? value) {
-                              setState(() {
-                                inputTodoType = value;
-                              });
+                              setInnerState(() => inputTodoType = value);
                             }),
                         const Text('important'),
                         Radio(
                             value: TodoType.urgent,
                             groupValue: inputTodoType,
                             onChanged: (TodoType? value) {
-                              setState(() {
-                                inputTodoType = value;
-                              });
+                              setInnerState(() => inputTodoType = value);
                             }),
                         const Text('urgent'),
                       ],
@@ -398,8 +392,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                   setPrefsTodoList();
                                   selectTodoListList.clear();
                                   if (todoList.isEmpty) {
-                                    showMultiple = false;
-                                    Navigator.of(context).pop();
+                                    resetMultipleState();
                                   }
                                 }
                               },
