@@ -30,11 +30,15 @@ class TodoItem {
   late bool checked;
   late String type;
   late bool selected;
+  late AnimationController controller;
+  late Animation<double> animation;
   TodoItem({
     required this.title,
     required this.updateTime,
     required this.type,
     required this.selected,
+    required this.controller,
+    required this.animation,
     this.checked = true,
   });
 
@@ -66,8 +70,7 @@ Map<int, TodoItemFilterType> todoItemFilterTypeIndexMap = {
   2: TodoItemFilterType.compete,
 };
 
-class _MainCoreState extends State<MainCore>
-    with SingleTickerProviderStateMixin {
+class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   String title = '';
   List<TodoItem> todoList = [];
   List<TodoItem> selectTodoListList = [];
@@ -75,7 +78,6 @@ class _MainCoreState extends State<MainCore>
   TodoType? tabTodoType = TodoType.normal;
   TodoItemFilterType filterType = TodoItemFilterType.all;
   late TabController _tabController;
-
   // 是否多选
   bool showMultiple = false;
   // 多选菜单CheckBox
@@ -101,16 +103,21 @@ class _MainCoreState extends State<MainCore>
   };
   void handleAddClick() {
     if (title.isEmpty) return;
+    var controller = _createAnimationController();
     TodoItem item = TodoItem(
         title: title,
         updateTime: getCurrentTime(),
         checked: false,
         selected: false,
+        controller: controller,
+        animation: _createAnimation(controller),
         type: inputTodoType.toString());
     setState(() {
       todoList.add(item);
       title = "";
     });
+    item.controller.reset();
+    item.controller.forward();
     _tittleController.clear();
     _descriptionController.clear();
     setPrefsTodoList();
@@ -139,6 +146,23 @@ class _MainCoreState extends State<MainCore>
   void dispose() {
     super.dispose();
     _tabController.dispose();
+    for (var element in todoList) {
+      element.controller.dispose();
+    }
+  }
+
+  AnimationController _createAnimationController() {
+    return AnimationController(
+      duration: _duration,
+      vsync: this,
+    );
+  }
+
+  Animation<double> _createAnimation(AnimationController controller) {
+    return CurvedAnimation(
+      parent: controller,
+      curve: Curves.fastOutSlowIn,
+    );
   }
 
   void handleListenerTabsController() {
@@ -154,6 +178,14 @@ class _MainCoreState extends State<MainCore>
       setState(() {
         todoList =
             items.map((item) => TodoItem.fromJson(json.decode(item))).toList();
+        for (var element in todoList) {
+          var controller = _createAnimationController();
+          element.controller = controller;
+          element.animation = _createAnimation(controller);
+        }
+        for (var element in todoList) {
+          element.controller.forward();
+        }
       });
     }
   }
@@ -346,7 +378,11 @@ class _MainCoreState extends State<MainCore>
                                 if (await baseDeleteConfirmDialog['show']!() !=
                                     null) {
                                   for (TodoItem element in selectTodoListList) {
-                                    todoList.remove(element);
+                                    await element.controller
+                                        .reverse()
+                                        .then((value) {
+                                      setState(() => todoList.remove(element));
+                                    });
                                   }
                                   setPrefsTodoList();
                                   selectTodoListList.clear();
@@ -355,7 +391,6 @@ class _MainCoreState extends State<MainCore>
                                     Navigator.of(context).pop();
                                   }
                                 }
-                                setState(() {});
                               },
                               child: const Text('delete')),
                           TextButton(
@@ -550,10 +585,13 @@ class _MainCoreState extends State<MainCore>
                                   if (await baseDeleteConfirmDialog[
                                           'show']!() !=
                                       null) {
-                                    setState(() {
-                                      todoList.removeAt(index);
+                                    item.controller.reverse().then((value) {
+                                      setState(() {
+                                        todoList.removeAt(index);
+                                      });
+                                      setPrefsTodoList();
+                                      item.controller.dispose();
                                     });
-                                    setPrefsTodoList();
                                   }
                                 },
                                 borderRadius:
@@ -571,82 +609,88 @@ class _MainCoreState extends State<MainCore>
                               ),
                             ],
                           ),
-                          child: Card(
-                            child: AnimatedOpacity(
-                              opacity: checked ? 0.4 : 1,
-                              duration: const Duration(milliseconds: 300),
-                              child: ListTile(
-                                onLongPress: () {
-                                  setState(() {
-                                    if (!showMultiple) {
-                                      todoList[getTodoItemIndex(item)]
-                                          .selected = true;
-                                      selectTodoListList.add(item);
-                                    } else {
-                                      for (var element in todoList) {
-                                        element.selected = false;
+                          child: SizeTransition(
+                            sizeFactor: item.animation,
+                            axis: Axis.vertical,
+                            child: Card(
+                              child: AnimatedOpacity(
+                                opacity: checked ? 0.4 : 1,
+                                duration: const Duration(milliseconds: 300),
+                                child: ListTile(
+                                  onLongPress: () {
+                                    setState(() {
+                                      if (!showMultiple) {
+                                        todoList[getTodoItemIndex(item)]
+                                            .selected = true;
+                                        selectTodoListList.add(item);
+                                      } else {
+                                        for (var element in todoList) {
+                                          element.selected = false;
+                                        }
+                                        selectTodoListList.clear();
                                       }
-                                      selectTodoListList.clear();
-                                    }
-                                    showMultiple = !showMultiple;
-                                  });
-                                  openOrCloseBottomSheet(renderTodoList);
-                                },
-                                selected: todoSelected,
-                                title: Text(title,
-                                    style: TextStyle(
-                                      decoration: decoration,
-                                    )),
-                                leading: buildScaleAnimatedSwitcher(
-                                  SizedBox(
-                                    width: 30,
-                                    height: 30,
-                                    key: ValueKey(showMultiple),
-                                    child: showMultiple
-                                        ? ReorderableDragStartListener(
-                                            index: index,
-                                            child: const Icon(
-                                              Icons.drag_handle_outlined,
+                                      showMultiple = !showMultiple;
+                                    });
+                                    openOrCloseBottomSheet(renderTodoList);
+                                  },
+                                  selected: todoSelected,
+                                  title: Text(title,
+                                      style: TextStyle(
+                                        decoration: decoration,
+                                      )),
+                                  leading: buildScaleAnimatedSwitcher(
+                                    SizedBox(
+                                      width: 30,
+                                      height: 30,
+                                      key: ValueKey(showMultiple),
+                                      child: showMultiple
+                                          ? ReorderableDragStartListener(
+                                              index: index,
+                                              child: const Icon(
+                                                Icons.drag_handle_outlined,
+                                              ),
+                                            )
+                                          : Checkbox(
+                                              value: checked,
+                                              shape: const CircleBorder(),
+                                              onChanged: (value) {
+                                                handleTodoCheckedChange(
+                                                    renderTodoList[index],
+                                                    value);
+                                              },
                                             ),
-                                          )
-                                        : Checkbox(
-                                            value: checked,
-                                            shape: const CircleBorder(),
-                                            onChanged: (value) {
-                                              handleTodoCheckedChange(
-                                                  renderTodoList[index], value);
-                                            },
-                                          ),
+                                    ),
                                   ),
+                                  trailing: Wrap(
+                                    spacing: 5,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      Text(renderTodoList[index].updateTime),
+                                      buildScaleAnimatedSwitcher(
+                                        SizedBox(
+                                            width: 30,
+                                            height: 30,
+                                            key: ValueKey(showMultiple),
+                                            child: showMultiple
+                                                ? Checkbox(
+                                                    value: todoSelected,
+                                                    onChanged: (value) {
+                                                      handleTodoSelectCheckBoxChange(
+                                                          item, value);
+                                                    },
+                                                  )
+                                                : ReorderableDragStartListener(
+                                                    index: index,
+                                                    child: const Icon(
+                                                      Icons.drag_handle_sharp,
+                                                    ),
+                                                  )),
+                                      )
+                                    ],
+                                  ),
+                                  subtitle: Text(type.split('.')[1]),
                                 ),
-                                trailing: Wrap(
-                                  spacing: 5,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text(renderTodoList[index].updateTime),
-                                    buildScaleAnimatedSwitcher(
-                                      SizedBox(
-                                          width: 30,
-                                          height: 30,
-                                          key: ValueKey(showMultiple),
-                                          child: showMultiple
-                                              ? Checkbox(
-                                                  value: todoSelected,
-                                                  onChanged: (value) {
-                                                    handleTodoSelectCheckBoxChange(
-                                                        item, value);
-                                                  },
-                                                )
-                                              : ReorderableDragStartListener(
-                                                  index: index,
-                                                  child: const Icon(
-                                                    Icons.drag_handle_sharp,
-                                                  ),
-                                                )),
-                                    )
-                                  ],
-                                ),
-                                subtitle: Text(type.split('.')[1]),
                               ),
                             ),
                           ),

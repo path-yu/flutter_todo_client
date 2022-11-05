@@ -9,7 +9,7 @@ packages:
     source: hosted
     version: "2.9.0"
   bitsdojo_window:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: bitsdojo_window
       url: "https://pub.flutter-io.cn"
@@ -79,7 +79,7 @@ packages:
     source: hosted
     version: "1.0.5"
   date_format:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: date_format
       url: "https://pub.flutter-io.cn"
@@ -111,13 +111,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_colorpicker:
-    dependency: "direct dev"
-    description:
-      name: flutter_colorpicker
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "1.0.3"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -126,7 +119,7 @@ packages:
     source: hosted
     version: "1.0.4"
   flutter_slidable:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: flutter_slidable
       url: "https://pub.flutter-io.cn"
@@ -142,15 +135,8 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  fluttertoast:
-    dependency: "direct main"
-    description:
-      name: fluttertoast
-      url: "https://pub.flutter-io.cn"
-    source: hosted
-    version: "8.1.1"
   font_awesome_flutter:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: font_awesome_flutter
       url: "https://pub.flutter-io.cn"
@@ -248,14 +234,14 @@ packages:
     source: hosted
     version: "4.2.4"
   provider:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: provider
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "6.0.3"
   shared_preferences:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: shared_preferences
       url: "https://pub.flutter-io.cn"
