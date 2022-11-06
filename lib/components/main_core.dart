@@ -93,10 +93,8 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   bool multipleChecked = false;
   DateTime selectDateTime = DateTime.now();
   final Duration _duration = const Duration(milliseconds: 300);
-  List<TodoItem> get completeTodoList =>
-      todoList.where((element) => element.checked).toList();
-  List<TodoItem> get activeTodoList =>
-      todoList.where((element) => !element.checked).toList();
+  List<TodoItem> get completeTodoList => getCompleteTodoList(todoList);
+  List<TodoItem> get activeTodoList => getActiveTodoList(todoList);
   final TextEditingController _tittleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -129,6 +127,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
         type: inputTodoType.toString());
     setState(() {
       todoList.add(item);
+      selectDateTime = DateTime.now();
     });
     _tabController.animateTo(tabTypeIndexMap[inputTodoType]!);
     item.controller.reset();
@@ -142,6 +141,14 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     DateTime now = DateTime.fromMillisecondsSinceEpoch(millisecondsSinceEpoch);
     // 储存当前时间并格式化
     return formatDate(now, [yyyy, '-', mm, '-', dd]);
+  }
+
+  List<TodoItem> getActiveTodoList(List<TodoItem> list) {
+    return list.where((element) => !element.checked).toList();
+  }
+
+  List<TodoItem> getCompleteTodoList(List<TodoItem> list) {
+    return list.where((element) => element.checked).toList();
   }
 
   @override
@@ -329,7 +336,14 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                       width: 25,
                     ),
                     ElevatedButton(
-                      onPressed: title.isNotEmpty ? handleAddClick : null,
+                      onPressed: title.isNotEmpty
+                          ? () {
+                              handleAddClick();
+                              setInnerState(() {
+                                title = '';
+                              });
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               vertical: 12, horizontal: 50)),
@@ -404,7 +418,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                     });
                                   }
                                   setPrefsTodoList();
-                                  if (todoList.isEmpty) {
+                                  if (selectTodoListList.isEmpty) {
                                     resetMultipleState();
                                   }
                                 }
@@ -517,11 +531,12 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
       return formatDateStr(element.createTime) ==
           formatDateStr(selectDateTime.millisecondsSinceEpoch);
     }).toList();
+    List<TodoItem> currentActiveTodoList = getActiveTodoList(renderTodoList);
     bool isSelectAll = renderTodoList.length == selectTodoListList.length;
     Widget multipleMessage = SizeTransition(
       sizeFactor: _animation,
       axis: Axis.vertical,
-      child: Padding(
+      child: Container(
           padding: const EdgeInsets.all(5),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -572,37 +587,46 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
       child: Container(
         child: Column(children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: TabBar(
                   controller: _tabController,
                   unselectedLabelColor: context.watch<MainStore>().textColor,
                   labelColor: context.watch<MainStore>().primaryColor,
-                  indicatorColor: context.watch<MainStore>().primaryColor,
                   tabs: typeTabs,
+                  indicator: UnderlineTabIndicator(
+                      borderSide: BorderSide(
+                          width: 2.0,
+                          color: context.watch<MainStore>().primaryColor),
+                      insets: const EdgeInsets.symmetric(horizontal: 30.0)),
                   labelStyle: const TextStyle(fontSize: 16),
                 ),
               ),
               const SizedBox(
                 width: 10,
               ),
-              OutlinedButton(
-                  onPressed: () async {
-                    var dateTime = await showDatePicker(
-                        context: context,
-                        initialDate: selectDateTime,
-                        confirmText: 'ok',
-                        cancelText: 'cancel',
-                        firstDate: DateTime(2022),
-                        lastDate: DateTime(2050));
-                    if (dateTime != null) {
-                      setState(() {
-                        selectDateTime = dateTime;
-                      });
-                    }
-                  },
-                  child: Text(
-                      formatDateStr(selectDateTime.millisecondsSinceEpoch)))
+              Tooltip(
+                message: 'Picker date',
+                child: OutlinedButton(
+                    onPressed: () async {
+                      var dateTime = await showDatePicker(
+                          context: context,
+                          initialDate: selectDateTime,
+                          confirmText: 'Ok',
+                          cancelText: 'Cancel',
+                          firstDate: DateTime(2022),
+                          helpText: 'Select Date',
+                          lastDate: DateTime(2050));
+                      if (dateTime != null) {
+                        setState(() {
+                          selectDateTime = dateTime;
+                        });
+                      }
+                    },
+                    child: Text(
+                        formatDateStr(selectDateTime.millisecondsSinceEpoch))),
+              )
             ],
           ),
           const SizedBox(
@@ -671,6 +695,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                             sizeFactor: item.animation,
                             axis: Axis.vertical,
                             child: Card(
+                              elevation: 2,
                               child: AnimatedOpacity(
                                 opacity: checked ? 0.4 : 1,
                                 duration: const Duration(milliseconds: 300),
@@ -779,7 +804,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${activeTodoList.length} item left',
+                '${currentActiveTodoList.length} item left',
                 style: const TextStyle(fontSize: 16),
               ),
               ToggleButtons(
