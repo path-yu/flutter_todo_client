@@ -285,11 +285,12 @@ class _PickerThemeDialogState extends State<PickerThemeDialog>
     return AlertDialog(
       actionsAlignment: MainAxisAlignment.center,
       contentPadding: const EdgeInsets.all(10),
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
       content: AnimatedContainer(
-        duration: const Duration(milliseconds: 350),
+        duration: _tabBarDuration,
         curve: Curves.ease,
         width: screenWidth * 0.45,
-        height: _tabIndex == 0 ? screenHeight * 0.31 : screenHeight * 0.4,
+        height: _tabIndex == 0 ? screenHeight * 0.307 : screenHeight * 0.4,
         child: Column(
           children: [
             const SizedBox(
@@ -297,9 +298,7 @@ class _PickerThemeDialogState extends State<PickerThemeDialog>
               child: Text(
                 'Picker theme color',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(
@@ -332,10 +331,10 @@ class _PickerThemeDialogState extends State<PickerThemeDialog>
                           pickerAreaHeightPercent: 0,
                           displayThumbColor: true,
                           colorPickerWidth: constrainedBox.maxWidth * 0.95,
-                          paletteType: PaletteType.hsvWithHue,
-                          labelTypes: const [],
+                          paletteType: PaletteType.hslWithHue,
                           portraitOnly: true,
                           hexInputBar: false,
+                          labelTypes: const [],
                           onColorChanged: (Color color) {
                             pickerColor = color;
                             context

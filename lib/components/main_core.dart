@@ -589,7 +589,6 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
       child: Container(
         child: Column(children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: TabBar(
