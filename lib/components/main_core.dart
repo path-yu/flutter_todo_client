@@ -99,10 +99,10 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   final TextEditingController _descriptionController = TextEditingController();
 
   static const List<Tab> typeTabs = <Tab>[
-    Tab(text: 'normal'),
-    Tab(text: 'important'),
-    Tab(text: 'urgent'),
-    Tab(text: 'all'),
+    Tab(text: 'NORMAL'),
+    Tab(text: 'IMPORTANT'),
+    Tab(text: 'URGENT'),
+    Tab(text: 'ALL'),
   ];
   Map<int, TodoType> tabIndexTypeMap = {
     0: TodoType.normal,
@@ -536,47 +536,49 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     Widget multipleMessage = SizeTransition(
       sizeFactor: _animation,
       axis: Axis.vertical,
-      child: Container(
-          padding: const EdgeInsets.all(5),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Transform.scale(
-                scale: 0.7,
-                child: IconButton(
-                  onPressed: resetMultipleState,
-                  icon: const Icon(Icons.close),
-                ),
-              ),
-              Text(
-                'selected ${selectTodoListList.length} item',
-                style: const TextStyle(fontSize: 16),
-              ),
-              Transform.scale(
-                scale: 0.7,
-                child: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      for (TodoItem todoItem in renderTodoList) {
-                        todoList[getTodoItemIndex(todoItem)].selected =
-                            !isSelectAll;
-                      }
-                      if (isSelectAll) {
-                        selectTodoListList.clear();
-                      } else {
-                        selectTodoListList = [...renderTodoList];
-                      }
-                    });
-                  },
-                  icon: Icon(
-                    isSelectAll
-                        ? Icons.check_box_outlined
-                        : Icons.check_box_outline_blank_sharp,
+      child: Card(
+        child: Container(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Transform.scale(
+                  scale: 0.7,
+                  child: IconButton(
+                    onPressed: resetMultipleState,
+                    icon: const Icon(Icons.close),
                   ),
                 ),
-              ),
-            ],
-          )),
+                Text(
+                  'selected ${selectTodoListList.length} item',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                Transform.scale(
+                  scale: 0.7,
+                  child: IconButton(
+                    onPressed: () {
+                      setState(() {
+                        for (TodoItem todoItem in renderTodoList) {
+                          todoList[getTodoItemIndex(todoItem)].selected =
+                              !isSelectAll;
+                        }
+                        if (isSelectAll) {
+                          selectTodoListList.clear();
+                        } else {
+                          selectTodoListList = [...renderTodoList];
+                        }
+                      });
+                    },
+                    icon: Icon(
+                      isSelectAll
+                          ? Icons.check_box_outlined
+                          : Icons.check_box_outline_blank_sharp,
+                    ),
+                  ),
+                ),
+              ],
+            )),
+      ),
     );
     return GestureDetector(
       onSecondaryTap: () {
@@ -595,6 +597,12 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                   unselectedLabelColor: context.watch<MainStore>().textColor,
                   labelColor: context.watch<MainStore>().primaryColor,
                   tabs: typeTabs,
+                  onTap: (value) {
+                    _tabController.index = _tabController.previousIndex;
+                    if (!showMultiple) {
+                      _tabController.animateTo(value);
+                    }
+                  },
                   indicator: UnderlineTabIndicator(
                       borderSide: BorderSide(
                           width: 2.0,

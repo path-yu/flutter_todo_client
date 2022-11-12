@@ -5,18 +5,24 @@ import 'package:todo_client/components/main_core.dart';
 import 'package:todo_client/state/mainStore.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
-final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
+final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  _prefs.then((prefs) {
-    String? pickPrimaryColorIndex = prefs.getString(pickPrimaryColorIndexKey);
-    bool? openNightMode = prefs.getBool(openNightModeKey);
+  prefs.then((prefsInstance) {
+    String? pickPrimaryColorIndex =
+        prefsInstance.getString(pickPrimaryColorIndexKey);
+    bool? openNightMode = prefsInstance.getBool(openNightModeKey);
+
     runApp(ChangeNotifierProvider(
       create: (context) => MainStore(
           pickPrimaryColorIndex: pickPrimaryColorIndex != null
               ? int.parse(pickPrimaryColorIndex)
-              : 5,
+              : null,
+          customColor: pickPrimaryColorIndex != null
+              ? getMaterialColorValue(int.parse(pickPrimaryColorIndex))
+              : prefsInstance.getInt(customColorKey),
           openNightMode: openNightMode ?? false),
       child: const MyApp(),
     ));
@@ -171,14 +177,13 @@ class _WindowButtonsState extends State<WindowButtons> {
     return Row(
       children: [
         Transform.translate(
-          offset: const Offset(0, -5),
+          offset: const Offset(0, -8),
           child: SizedBox(
             width: 40,
             child: TextButton(
               child: const Icon(
                 Icons.minimize,
                 color: Colors.white,
-                size: 16,
               ),
               onPressed: () => appWindow.minimize(),
             ),
@@ -188,7 +193,9 @@ class _WindowButtonsState extends State<WindowButtons> {
           width: 40,
           child: TextButton(
             child: Icon(
-              appWindow.isMaximized ? Icons.close_fullscreen : Icons.fullscreen,
+              appWindow.isMaximized
+                  ? Icons.close_fullscreen
+                  : Icons.check_box_outline_blank,
               color: Colors.white,
               size: 16,
             ),
@@ -212,16 +219,56 @@ class _WindowButtonsState extends State<WindowButtons> {
 }
 
 class PickerThemeDialog extends StatefulWidget {
-  const PickerThemeDialog({Key? key}) : super(key: key);
+  const PickerThemeDialog({Key? key})
+      : super(
+          key: key,
+        );
 
   @override
   State<PickerThemeDialog> createState() => _PickerThemeDialogState();
 }
 
-class _PickerThemeDialogState extends State<PickerThemeDialog> {
+class _PickerThemeDialogState extends State<PickerThemeDialog>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late Color pickerColor = context.read<MainStore>().primaryColor;
+  int _tabIndex = 0;
+  final Duration _tabBarDuration = const Duration(milliseconds: 300);
+  final List<Widget> _tabs = [
+    const Tab(
+      text: 'Custom',
+    ),
+    const Tab(
+      text: 'Basic color',
+    ),
+  ];
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(
+        animationDuration: _tabBarDuration,
+        vsync: this,
+        length: _tabs.length,
+        initialIndex: _tabIndex);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _tabController.dispose();
+  }
+
+  void handleTabOnTap(index) async {
+    _tabController.index = _tabController.previousIndex;
+    if (index == 1) {
+      _tabController.animateTo(1);
+      await Future.delayed(_tabBarDuration);
+      setState(() => _tabIndex = 1);
+    } else {
+      setState(() => _tabIndex = 0);
+      await Future.delayed(_tabBarDuration);
+      _tabController.animateTo(0);
+    }
   }
 
   double checkBoxSize = 24;
@@ -233,71 +280,124 @@ class _PickerThemeDialogState extends State<PickerThemeDialog> {
         itemSize - checkBoxSize + checkBoxSize * 0.8 / 2,
         itemSize - checkBoxSize + checkBoxSize * 0.8 / 2);
     var pickerIndex = context.watch<MainStore>().pickPrimaryColorIndex;
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
     return AlertDialog(
       actionsAlignment: MainAxisAlignment.center,
-      content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
+      contentPadding: const EdgeInsets.all(10),
+      content: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.ease,
+        width: screenWidth * 0.45,
+        height: _tabIndex == 0 ? screenHeight * 0.31 : screenHeight * 0.4,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Picker theme color',
-              style: TextStyle(
-                fontSize: 20,
+            const SizedBox(
+              width: double.infinity,
+              child: Text(
+                'Picker theme color',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                ),
               ),
             ),
             const SizedBox(
               height: 20,
             ),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: materialColorList.asMap().keys.toList().map((index) {
-                return Stack(
+            FractionallySizedBox(
+              widthFactor: 0.6,
+              child: TabBar(
+                tabs: _tabs,
+                onTap: handleTabOnTap,
+                controller: _tabController,
+                unselectedLabelColor: context.watch<MainStore>().textColor,
+                labelColor: context.watch<MainStore>().primaryColor,
+              ),
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+            Expanded(
+                child: TabBarView(
+              controller: _tabController,
+              children: [
+                Column(
                   children: [
-                    InkWell(
-                      onTap: () {
-                        context
-                            .read<MainStore>()
-                            .changePrickerPrimaryColorIndex(index);
-                        _prefs.then((value) {
-                          value.setString(
-                              pickPrimaryColorIndexKey, (index).toString());
-                        });
-                      },
-                      child: Container(
-                        width: itemSize,
-                        height: itemSize,
-                        decoration: BoxDecoration(
-                            color: materialColorList[index],
-                            borderRadius:
-                                const BorderRadius.all(Radius.circular(5))),
-                      ),
-                    ),
-                    if (pickerIndex == index)
-                      Transform.translate(
-                          offset: checkBoxOffset,
-                          child: Transform.scale(
-                            scale: 0.8,
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius:
-                                      BorderRadius.all(Radius.circular(30))),
-                              child: SizedBox(
-                                width: checkBoxSize,
-                                height: checkBoxSize,
-                                child: Checkbox(
-                                    value: true,
-                                    shape: const CircleBorder(),
-                                    onChanged: (_) {}),
-                              ),
-                            ),
-                          ))
+                    LayoutBuilder(builder: (context, constrainedBox) {
+                      return Transform.translate(
+                        offset: const Offset(0, 15),
+                        child: ColorPicker(
+                          pickerColor: pickerColor,
+                          pickerAreaHeightPercent: 0,
+                          displayThumbColor: true,
+                          colorPickerWidth: constrainedBox.maxWidth * 0.95,
+                          paletteType: PaletteType.hsvWithHue,
+                          labelTypes: const [],
+                          portraitOnly: true,
+                          hexInputBar: false,
+                          onColorChanged: (Color color) {
+                            pickerColor = color;
+                            context
+                                .read<MainStore>()
+                                .changeCustomColor(color.value);
+                          },
+                        ),
+                      );
+                    })
                   ],
-                );
-              }).toList(),
-            )
+                ),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children:
+                      materialColorList.asMap().keys.toList().map((index) {
+                    return Stack(
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            setState(() => pickerColor =
+                                Color(materialColorList[index].value));
+                            context
+                                .read<MainStore>()
+                                .changePrickerPrimaryColorIndex(index);
+                          },
+                          child: Container(
+                            width: itemSize,
+                            height: itemSize,
+                            decoration: BoxDecoration(
+                                color: materialColorList[index],
+                                borderRadius:
+                                    const BorderRadius.all(Radius.circular(5))),
+                          ),
+                        ),
+                        if (pickerIndex == index)
+                          Transform.translate(
+                              offset: checkBoxOffset,
+                              child: Transform.scale(
+                                scale: 0.8,
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(30))),
+                                  child: SizedBox(
+                                    width: checkBoxSize,
+                                    height: checkBoxSize,
+                                    child: Checkbox(
+                                        value: true,
+                                        shape: const CircleBorder(),
+                                        onChanged: (_) {}),
+                                  ),
+                                ),
+                              ))
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ],
+            ))
           ],
         ),
       ),
