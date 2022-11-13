@@ -715,8 +715,10 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                   onTap: () {
                                     setState(() {
                                       if (showMultiple) {
-                                        todoList[index].selected =
-                                            !todoList[index].selected;
+                                        bool selected =
+                                            todoList[index].selected;
+                                        todoList[index].selected = !selected;
+                                        changeSelectTodoList(!selected, item);
                                       } else {
                                         todoList[index].checked =
                                             !todoList[index].checked;
