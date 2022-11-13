@@ -95,6 +95,24 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   final Duration _duration = const Duration(milliseconds: 300);
   List<TodoItem> get completeTodoList => getCompleteTodoList(todoList);
   List<TodoItem> get activeTodoList => getActiveTodoList(todoList);
+
+  List<TodoItem> get renderTodoList {
+    List<TodoItem> list = filterType == TodoItemFilterType.all
+        ? todoList
+        : filterType == TodoItemFilterType.active
+            ? activeTodoList
+            : completeTodoList;
+    if (_tabController.index != typeTabs.length - 1) {
+      list = list
+          .where((element) => element.type == tabTodoType.toString())
+          .toList();
+    }
+    return list.where((element) {
+      return formatDateStr(element.createTime) ==
+          formatDateStr(selectDateTime.millisecondsSinceEpoch);
+    }).toList();
+  }
+
   final TextEditingController _tittleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -177,6 +195,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   AnimationController _createAnimationController() {
     return AnimationController(
       duration: _duration,
+      reverseDuration: const Duration(milliseconds: 250),
       vsync: this,
     );
   }
@@ -206,7 +225,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
           element.controller = controller;
           element.animation = _createAnimation(controller);
         }
-        for (var element in todoList) {
+        for (var element in renderTodoList) {
           element.controller.forward();
         }
       });
@@ -517,20 +536,6 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
       );
     }
 
-    List<TodoItem> renderTodoList = filterType == TodoItemFilterType.all
-        ? todoList
-        : filterType == TodoItemFilterType.active
-            ? activeTodoList
-            : completeTodoList;
-    if (_tabController.index != typeTabs.length - 1) {
-      renderTodoList = renderTodoList
-          .where((element) => element.type == tabTodoType.toString())
-          .toList();
-    }
-    renderTodoList = renderTodoList.where((element) {
-      return formatDateStr(element.createTime) ==
-          formatDateStr(selectDateTime.millisecondsSinceEpoch);
-    }).toList();
     List<TodoItem> currentActiveTodoList = getActiveTodoList(renderTodoList);
     bool isSelectAll = renderTodoList.length == selectTodoListList.length;
     Widget multipleMessage = SizeTransition(
@@ -675,7 +680,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                       setState(() {
                                         todoList.removeAt(index);
                                       });
-                                      if (todoList.isEmpty) {
+                                      if (todoList.isEmpty && showMultiple) {
                                         resetMultipleState();
                                       }
                                       setPrefsTodoList();
@@ -707,6 +712,17 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                 opacity: checked ? 0.4 : 1,
                                 duration: const Duration(milliseconds: 300),
                                 child: ListTile(
+                                  onTap: () {
+                                    setState(() {
+                                      if (showMultiple) {
+                                        todoList[index].selected =
+                                            !todoList[index].selected;
+                                      } else {
+                                        todoList[index].checked =
+                                            !todoList[index].checked;
+                                      }
+                                    });
+                                  },
                                   onLongPress: () {
                                     setState(() {
                                       if (!showMultiple) {
