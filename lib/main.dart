@@ -54,6 +54,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
+
       theme: ThemeData(
           primarySwatch: primaryColor,
           brightness: context.watch<MainStore>().brightness,

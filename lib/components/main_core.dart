@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -7,6 +8,7 @@ import 'package:date_format/date_format.dart';
 import 'package:todo_client/common/buildScaleAnimatedSwitcher.dart';
 import 'package:todo_client/main.dart';
 import 'package:todo_client/state/mainStore.dart';
+import '../common/common.dart';
 
 class MainCore extends StatefulWidget {
   const MainCore({Key? key}) : super(key: key);
@@ -74,9 +76,18 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   String title = '';
   List<TodoItem> todoList = [];
   List<TodoItem> selectTodoListList = [];
+  // 是否多选
+  bool showMultiple = false;
+  // 多选菜单CheckBox
+  bool multipleChecked = false;
+  // 是否开启提醒
+  bool enableReminder = false;
+  //提醒时间
+  DateTime reminderTime = DateTime.now();
   TodoType? inputTodoType = TodoType.normal;
   TodoType? tabTodoType = TodoType.normal;
   TodoItemFilterType filterType = TodoItemFilterType.all;
+
   late TabController _tabController;
 
   late final AnimationController _controller = AnimationController(
@@ -87,10 +98,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     parent: _controller,
     curve: Curves.linear,
   );
-  // 是否多选
-  bool showMultiple = false;
-  // 多选菜单CheckBox
-  bool multipleChecked = false;
+
   DateTime selectDateTime = DateTime.now();
   final Duration _duration = const Duration(milliseconds: 300);
   List<TodoItem> get completeTodoList => getCompleteTodoList(todoList);
@@ -216,6 +224,18 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   void init() async {
     final prefs = await SharedPreferences.getInstance();
     List<String>? items = prefs.getStringList('todoList');
+    bool? enableReminderValue = prefs.getBool(enableReminderKey);
+    int? reminderTimeValue = prefs.getInt(reminderTimeKey);
+    if (enableReminderValue != null) {
+      setState(() {
+        enableReminder = enableReminderValue;
+      });
+    }
+    if (reminderTimeValue != null) {
+      setState(() {
+        reminderTime = DateTime.fromMillisecondsSinceEpoch(reminderTimeValue);
+      });
+    }
     if (items != null) {
       setState(() {
         todoList =
@@ -497,6 +517,86 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     Navigator.of(context).pop();
   }
 
+  void openDateTimePicker() {
+    DateTime contentPickTime = reminderTime;
+    bool enable = enableReminder;
+    showBaseAlertDialog(
+        title: 'reminder time',
+        contentWidget: StatefulBuilder(builder: (context, setStateInstance) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 400,
+                height: 150,
+                child: CupertinoDatePicker(
+                  initialDateTime: reminderTime,
+                  use24hFormat: true,
+                  onDateTimeChanged: (date) {
+                    contentPickTime = date;
+                  },
+                ),
+              ),
+              ListTile(
+                title: const Text(
+                  'Repeat reminder',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                trailing: Opacity(
+                  opacity: 0.8,
+                  child: TextButton(
+                      onPressed: () {},
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text(
+                            'No repeat',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          SizedBox(
+                            width: 10,
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 18,
+                          )
+                        ],
+                      )),
+                ),
+              ),
+              SwitchListTile(
+                value: enableReminder,
+                onChanged: (value) {
+                  setStateInstance(() => enableReminder = value);
+                  enable = value;
+                },
+                title: const Text(
+                  'enable',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              )
+            ],
+          );
+        }),
+        onConfirm: () async {
+          setState(() {
+            // 过滤无效设置
+            if (contentPickTime.day >= DateTime.now().day) {
+              reminderTime = contentPickTime;
+              prefs.then((that) {
+                that.setInt(
+                    reminderTimeKey, contentPickTime.millisecondsSinceEpoch);
+              });
+            }
+            enableReminder = enable;
+            prefs.then((that) {
+              that.setBool(enableReminderKey, enableReminder);
+            });
+          });
+        });
+  }
+
   void toggleMultipleShow(bool show) {
     setState(() => showMultiple = show);
     if (showMultiple) {
@@ -504,6 +604,29 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     } else {
       _controller.reverse();
     }
+  }
+
+  String formateReminderTime() {
+    DateTime now = DateTime.now();
+    String hhss = formatDate(reminderTime, [
+      HH,
+      ':',
+      ss,
+    ]);
+    if (now.day == reminderTime.day) {
+      return 'Today ' + hhss;
+    } else if (reminderTime.day - now.day == 1) {
+      return 'Tomorrow ' + hhss;
+    }
+    return formatDate(reminderTime, [
+      MM,
+      '-',
+      DD,
+      ' ',
+      HH,
+      ':',
+      ss,
+    ]);
   }
 
   @override
@@ -638,6 +761,28 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                     },
                     child: Text(
                         formatDateStr(selectDateTime.millisecondsSinceEpoch))),
+              ),
+              const SizedBox(
+                width: 20,
+              ),
+              Tooltip(
+                message: 'Set reminder',
+                child: OutlinedButton(
+                    onPressed: () {
+                      openDateTimePicker();
+                    },
+                    child: Wrap(
+                      spacing: 5,
+                      children: [
+                        const Icon(
+                          Icons.alarm,
+                          size: 18,
+                        ),
+                        Text(enableReminder
+                            ? formateReminderTime()
+                            : 'Set reminder')
+                      ],
+                    )),
               )
             ],
           ),
