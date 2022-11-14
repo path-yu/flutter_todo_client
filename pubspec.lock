@@ -71,6 +71,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.16.0"
+  crypto:
+    dependency: transitive
+    description:
+      name: crypto
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.0.2"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -170,6 +177,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "1.0.1"
+  local_notifier:
+    dependency: "direct main"
+    description:
+      name: local_notifier
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.5"
   matcher:
     dependency: transitive
     description:
@@ -357,6 +371,20 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.4.12"
+  typed_data:
+    dependency: transitive
+    description:
+      name: typed_data
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.3.1"
+  uuid:
+    dependency: transitive
+    description:
+      name: uuid
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.0.7"
   vector_math:
     dependency: transitive
     description:

@@ -19,7 +19,9 @@ class MainStore with ChangeNotifier {
 
   MaterialColor get primaryColor => pickPrimaryColorIndex != null
       ? materialColorList[pickPrimaryColorIndex!]
-      : createMaterialColor(Color(customColor!));
+      : customColor != null
+          ? createMaterialColor(Color(customColor!))
+          : Colors.blue;
   Brightness get brightness =>
       openNightMode ? Brightness.dark : Brightness.light;
 

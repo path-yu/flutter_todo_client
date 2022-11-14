@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:local_notifier/local_notifier.dart';
 import 'package:todo_client/components/main_core.dart';
 import 'package:todo_client/state/mainStore.dart';
 import 'package:provider/provider.dart';
@@ -8,8 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 final Future<SharedPreferences> prefs = SharedPreferences.getInstance();
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await localNotifier.setup(
+    appName: 'Todo list',
+    // The parameter shortcutPolicy only works on Windows
+    shortcutPolicy: ShortcutPolicy.requireCreate,
+  );
   prefs.then((prefsInstance) {
     String? pickPrimaryColorIndex =
         prefsInstance.getString(pickPrimaryColorIndexKey);
@@ -28,7 +34,7 @@ void main() {
     ));
     doWhenWindowReady(() {
       final win = appWindow;
-      const initialSize = Size(800, 700);
+      const initialSize = Size(850, 700);
       win.minSize = initialSize;
       win.size = initialSize;
       win.alignment = Alignment.center;

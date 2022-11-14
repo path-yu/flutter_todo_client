@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:todo_client/main.dart';
 
-void showBaseAlertDialog(
+Future<bool?> showBaseAlertDialog(
     {required Widget contentWidget,
     required String title,
     bool? showCancel = true,
@@ -9,7 +9,7 @@ void showBaseAlertDialog(
     Function? onClose}) {
   onConfirm ??= () {};
   onClose ??= () {};
-  showDialog(
+  return showDialog(
       context: navigatorKey.currentState!.context,
       builder: (context) {
         List<Widget> actions = [
@@ -21,9 +21,9 @@ void showBaseAlertDialog(
             },
           ),
           TextButton(
-            child: const Text("confirm"),
+            child: const Text("Confirm"),
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(true);
               onConfirm!();
               onClose!();
             },
@@ -46,3 +46,4 @@ void showBaseAlertDialog(
 
 const enableReminderKey = 'enableReminderKey';
 const reminderTimeKey = 'enableReminderTimeKey';
+const reminderTimeTypeIndexKey = 'reminderTimeTypeIndexKey';
