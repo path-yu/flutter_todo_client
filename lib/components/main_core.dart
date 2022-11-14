@@ -822,6 +822,8 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   Widget space = const SizedBox(
     height: 15,
   );
+  final OutlinedBorder _outlinedBorder =
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(15.0));
   final InputDecoration _titleInputDecoration = const InputDecoration(
       labelText: "What needs to be done?",
       hintText: "Todo title",
@@ -850,6 +852,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
 
     List<TodoItem> currentActiveTodoList = getActiveTodoList(renderTodoList);
     bool isSelectAll = renderTodoList.length == selectTodoListList.length;
+    Color primaryColor = context.watch<MainStore>().primaryColor;
     String reminderTimeStr = formateReminderTime();
     Widget multipleMessage = SizeTransition(
       sizeFactor: _animation,
@@ -911,9 +914,9 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
               Expanded(
                 child: TabBar(
                   controller: _tabController,
-                  padding: const EdgeInsets.all(0),
+                  isScrollable: true,
                   unselectedLabelColor: context.watch<MainStore>().textColor,
-                  labelColor: context.watch<MainStore>().primaryColor,
+                  labelColor: primaryColor,
                   tabs: typeTabs,
                   onTap: (value) {
                     _tabController.index = _tabController.previousIndex;
@@ -921,12 +924,9 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                       _tabController.animateTo(value);
                     }
                   },
-                  indicator: UnderlineTabIndicator(
-                      borderSide: BorderSide(
-                          width: 2.0,
-                          color: context.watch<MainStore>().primaryColor),
-                      insets: const EdgeInsets.symmetric(horizontal: 30.0)),
-                  labelStyle: const TextStyle(fontSize: 16),
+                  indicatorSize: TabBarIndicatorSize.label,
+                  indicatorColor: primaryColor,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 20.0),
                 ),
               ),
               const SizedBox(
@@ -935,6 +935,9 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
               Tooltip(
                 message: 'Picker date',
                 child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      shape: _outlinedBorder,
+                    ),
                     onPressed: () async {
                       var dateTime = await showDatePicker(
                           context: context,
@@ -954,13 +957,14 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                         formatDateStr(selectDateTime.millisecondsSinceEpoch))),
               ),
               const SizedBox(
-                width: 20,
+                width: 10,
               ),
               Tooltip(
                 message: 'Set reminder',
                 child: SizedBox(
                   child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
+                          shape: _outlinedBorder,
                           foregroundColor: hasAlreadyReminder && enableReminder
                               ? Colors.red
                               : context.watch<MainStore>().primaryColor),
@@ -978,7 +982,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                             enableReminder
                                 ? pickerReminderTypeIndex == 0
                                     ? reminderTimeStr
-                                    : '$reminderTimeStr $pickerRepeatReminderTypeStr'
+                                    : '$reminderTimeStr  $pickerRepeatReminderTypeStr'
                                 : 'Set reminder',
                             style: const TextStyle(
                               overflow: TextOverflow.ellipsis,
@@ -1233,7 +1237,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
             ],
           ),
         ]),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(15),
       ),
     );
   }
