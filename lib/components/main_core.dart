@@ -92,7 +92,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
   TodoItemFilterType filterType = TodoItemFilterType.all;
   Timer? _timer;
   late TabController _tabController;
-
+  late FocusNode titleFocusNode;
   late final AnimationController _controller = AnimationController(
     duration: _duration,
     vsync: this,
@@ -202,6 +202,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
     _tabController =
         TabController(vsync: this, length: typeTabs.length, initialIndex: 3);
     _tabController.addListener(handleListenerTabsController);
+    titleFocusNode = FocusNode();
   }
 
   @override
@@ -300,6 +301,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
             children: [
               TextFormField(
                 initialValue: editTitle,
+                autofocus: true,
                 onChanged: (value) => editTitle = value,
                 decoration: titleDecoration,
                 // decoration: titleDecoration,
@@ -354,8 +356,11 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                 TextField(
                   controller: _tittleController,
                   decoration: _titleInputDecoration,
+                  focusNode: titleFocusNode,
+                  autofocus: true,
                   onChanged: (value) => setInnerState(() => title = value),
                   onSubmitted: (value) {
+                    titleFocusNode.requestFocus();
                     handleAddClick();
                     setInnerState(() {
                       title = '';
@@ -399,6 +404,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                       onPressed: title.isNotEmpty
                           ? () {
                               handleAddClick();
+                              titleFocusNode.requestFocus();
                               setInnerState(() {
                                 title = '';
                               });
