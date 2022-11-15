@@ -32,6 +32,7 @@ dependencies:
   flutter_colorpicker: ^1.0.3
   flutter_datetime_picker: ^1.5.1
   local_notifier: ^0.1.5
+  timeago: ^3.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

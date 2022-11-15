@@ -11,6 +11,7 @@ import 'package:todo_client/common/buildScaleAnimatedSwitcher.dart';
 import 'package:todo_client/main.dart';
 import 'package:todo_client/state/mainStore.dart';
 import '../common/common.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class MainCore extends StatefulWidget {
   const MainCore({Key? key}) : super(key: key);
@@ -806,6 +807,9 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
       ':',
       nn,
     ]);
+    if (hhnn.startsWith('0')) {
+      hhnn = hhnn.substring(1, hhnn.length);
+    }
     if (diffDateDay(0)) {
       return 'Today ' + hhnn;
     } else if (diffDateDay(1)) {
@@ -1070,7 +1074,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                               elevation: 2,
                               child: AnimatedOpacity(
                                 opacity: checked ? 0.4 : 1,
-                                duration: const Duration(milliseconds: 300),
+                                duration: _duration,
                                 child: ListTile(
                                   onTap: () {
                                     setState(() {
@@ -1134,7 +1138,9 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
                                     crossAxisAlignment:
                                         WrapCrossAlignment.center,
                                     children: [
-                                      Text(formatDateStr(item.createTime)),
+                                      Text(timeago.format(
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                              item.createTime))),
                                       buildScaleAnimatedSwitcher(
                                         SizedBox(
                                             width: 30,

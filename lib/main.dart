@@ -115,7 +115,7 @@ class TopBar extends StatelessWidget {
             children: [
               const Text(
                 'Todo list',
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Row(
                 children: [
