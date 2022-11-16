@@ -119,10 +119,18 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
           .where((element) => element.type == tabTodoType.toString())
           .toList();
     }
-    return list.where((element) {
+    var result = list.where((element) {
       return formatDateStr(element.createTime) ==
           formatDateStr(selectDateTime.millisecondsSinceEpoch);
     }).toList();
+    callControllerForward(result);
+    return result;
+  }
+
+  void callControllerForward(list) {
+    for (var element in list) {
+      element.controller.forward();
+    }
   }
 
   String get pickerRepeatReminderTypeStr =>
@@ -267,9 +275,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
           element.controller = controller;
           element.animation = _createAnimation(controller);
         }
-        for (var element in renderTodoList) {
-          element.controller.forward();
-        }
+        callControllerForward(renderTodoList);
       });
     }
     checkRepeatReminderNotification();
