@@ -830,7 +830,7 @@ class _MainCoreState extends State<MainCore> with TickerProviderStateMixin {
         ' ',
         HH,
         ':',
-        ss,
+        nn,
       ]);
     }
   }
